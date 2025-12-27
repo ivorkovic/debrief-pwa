@@ -1,0 +1,48 @@
+<div class="min-h-screen bg-gray-900">
+  <!-- Header -->
+  <header class="flex items-center justify-between p-4 border-b border-gray-800">
+    <%= link_to debriefs_path, class: "text-blue-400 hover:text-blue-300" do %>
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+    <% end %>
+    <h1 class="text-white font-medium">
+      <%= @debrief.created_at.strftime("%b %d, %Y %H:%M") %>
+    </h1>
+    <div class="w-6"></div>
+  </header>
+
+  <!-- Content -->
+  <div class="p-4 space-y-4">
+    <!-- Status -->
+    <div class="flex items-center gap-2">
+      <%= render_status_badge(@debrief) %>
+      <% if @debrief.processed_at %>
+        <span class="text-gray-500 text-sm">
+          Processed <%= time_ago_in_words(@debrief.processed_at) %> ago
+        </span>
+      <% end %>
+    </div>
+
+    <!-- Audio player -->
+    <% if @debrief.audio.attached? %>
+      <div class="bg-gray-800 rounded-lg p-4">
+        <audio controls class="w-full" preload="metadata">
+          <source src="<%= url_for(@debrief.audio) %>" type="<%= @debrief.audio.content_type %>">
+        </audio>
+      </div>
+    <% end %>
+
+    <!-- Transcript -->
+    <div class="bg-gray-800 rounded-lg p-4">
+      <h2 class="text-gray-400 text-sm font-medium mb-2">Transcript</h2>
+      <% if @debrief.transcript.present? %>
+        <div class="text-white whitespace-pre-wrap"><%= @debrief.transcript %></div>
+      <% elsif @debrief.pending? || @debrief.transcribing? %>
+        <p class="text-gray-500 italic">Transcription in progress...</p>
+      <% elsif @debrief.failed? %>
+        <p class="text-red-400">Transcription failed: <%= @debrief.error_message %></p>
+      <% end %>
+    </div>
+  </div>
+</div>

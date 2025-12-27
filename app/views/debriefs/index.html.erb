@@ -1,0 +1,51 @@
+<div class="min-h-screen bg-gray-900">
+  <!-- Header -->
+  <header class="flex items-center justify-between p-4 border-b border-gray-800">
+    <%= link_to new_debrief_path, class: "text-blue-400 hover:text-blue-300" do %>
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+      </svg>
+    <% end %>
+    <h1 class="text-white font-medium">History</h1>
+    <div class="w-6"></div>
+  </header>
+
+  <% if flash[:notice] %>
+    <div class="bg-green-500/20 border-b border-green-500 text-green-300 px-4 py-3">
+      <%= flash[:notice] %>
+    </div>
+  <% end %>
+
+  <!-- List -->
+  <div class="divide-y divide-gray-800">
+    <% if @debriefs.empty? %>
+      <div class="p-8 text-center text-gray-500">
+        No recordings yet
+      </div>
+    <% else %>
+      <% @debriefs.each do |debrief| %>
+        <%= link_to debrief_path(debrief), class: "block p-4 hover:bg-gray-800 transition-colors" do %>
+          <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-white font-medium">
+                  <%= debrief.created_at.strftime("%b %d, %Y") %>
+                </span>
+                <span class="text-gray-500 text-sm">
+                  <%= debrief.created_at.strftime("%H:%M") %>
+                </span>
+                <%= render_status_badge(debrief) %>
+              </div>
+              <p class="text-gray-400 text-sm truncate">
+                <%= debrief.transcript.present? ? truncate(debrief.transcript, length: 100) : "Pending transcription..." %>
+              </p>
+            </div>
+            <svg class="w-5 h-5 text-gray-600 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
