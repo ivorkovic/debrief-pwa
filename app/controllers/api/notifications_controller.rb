@@ -45,6 +45,7 @@ module Api
       {
         id: debrief.id,
         transcript: debrief.transcript,
+        recorded_by: debrief.recorded_by,
         created_at: debrief.created_at.strftime("%Y-%m-%d %H:%M")
       }
     end
