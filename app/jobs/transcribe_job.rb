@@ -68,9 +68,10 @@ class TranscribeJob < ApplicationJob
   end
 
   def notify_agent(debrief)
-    # Try to notify via SSH tunnel to Mac (localhost:9999)
+    # Try to notify via SSH tunnel to Mac (host:9999)
     # If Mac is offline, that's fine - it will catch up on reconnect
-    uri = URI("http://127.0.0.1:9999/notify")
+    # Use host.docker.internal to reach the Docker host from inside container
+    uri = URI("http://host.docker.internal:9999/notify")
 
     request = Net::HTTP::Post.new(uri)
     request.content_type = "application/json"
