@@ -66,17 +66,40 @@ export default class extends Controller {
     this.statusTarget.textContent = "Uploading..."
   }
 
-  upload() {
+  async upload() {
     const mimeType = this.mediaRecorder.mimeType
-    const extension = mimeType.includes("webm") ? "webm" : "mp4"
+    // iOS Safari uses mp4, others use webm
+    const extension = mimeType.includes("mp4") ? "mp4" : "webm"
     const blob = new Blob(this.audioChunks, { type: mimeType })
-    const file = new File([blob], `debrief_${Date.now()}.${extension}`, { type: mimeType })
 
-    const dataTransfer = new DataTransfer()
-    dataTransfer.items.add(file)
-    this.audioInputTarget.files = dataTransfer.files
+    const formData = new FormData()
+    formData.append("audio", blob, `debrief_${Date.now()}.${extension}`)
 
-    this.formTarget.requestSubmit()
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+
+    try {
+      const response = await fetch("/debriefs", {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken,
+          "Accept": "text/html"
+        },
+        body: formData
+      })
+
+      if (response.redirected) {
+        window.location.href = response.url
+      } else if (response.ok) {
+        window.location.href = "/debriefs"
+      } else {
+        this.statusTarget.textContent = "Upload failed. Tap to retry."
+        console.error("Upload failed:", response.status)
+      }
+    } catch (error) {
+      this.statusTarget.textContent = "Upload failed. Tap to retry."
+      console.error("Upload error:", error)
+    }
   }
 
   startTimer() {
