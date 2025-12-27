@@ -13,7 +13,7 @@ class DebriefsController < ApplicationController
   end
 
   def create
-    @debrief = Debrief.new
+    @debrief = Debrief.new(recorded_by: session[:user])
     @debrief.audio.attach(params[:audio])
 
     if @debrief.save

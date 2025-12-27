@@ -33,6 +33,10 @@
   <div class="p-4 space-y-4">
     <!-- Status -->
     <div class="flex items-center gap-2">
+      <% if @debrief.recorded_by.present? %>
+        <span class="text-blue-400 font-medium"><%= @debrief.recorded_by %></span>
+        <span class="text-gray-600">&middot;</span>
+      <% end %>
       <%= render_status_badge(@debrief) %>
       <% if @debrief.processed_at %>
         <span class="text-gray-500 text-sm">

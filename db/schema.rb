@@ -10,11 +10,13 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_27_090147) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_27_231605) do
   create_table "debriefs", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "error_message"
+    t.datetime "notified_at"
     t.datetime "processed_at"
+    t.string "recorded_by"
     t.string "status", default: "pending", null: false
     t.text "transcript"
     t.datetime "updated_at", null: false

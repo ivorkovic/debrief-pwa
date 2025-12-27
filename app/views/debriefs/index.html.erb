@@ -33,8 +33,14 @@
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
+                <% if debrief.recorded_by.present? %>
+                  <span class="text-blue-400 font-medium">
+                    <%= debrief.recorded_by %>
+                  </span>
+                  <span class="text-gray-600">&middot;</span>
+                <% end %>
                 <span class="text-white font-medium">
-                  <%= debrief.created_at.strftime("%b %d, %Y") %>
+                  <%= debrief.created_at.strftime("%b %d") %>
                 </span>
                 <span class="text-gray-500 text-sm">
                   <%= debrief.created_at.strftime("%H:%M") %>
