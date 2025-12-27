@@ -212,3 +212,43 @@ Contains:
 ### Why Fizzy's tmux pattern?
 
 Simple `tmux send-keys` doesn't work from launchd daemons. The load-buffer + paste-buffer + sleep + C-m pattern is the only reliable way to send text to a tmux session from a background process.
+
+## UI/UX
+
+### Recording Flow
+
+The recording interface uses a Stimulus controller (`recorder_controller.js`) with three states:
+
+1. **Idle:** Big red record button (centered)
+   - Tap to start recording
+
+2. **Recording:** Red pulsing stop button (same centered position)
+   - Timer counts up
+   - Tap to stop recording
+
+3. **Preview:** Two equal-sized buttons side by side
+   - Gray X (cancel) - discards recording, returns to idle
+   - Green checkmark (send) - uploads and transcribes
+
+### Auto-refresh
+
+Both index and show pages auto-refresh every 3 seconds while any debrief has `pending` or `transcribing` status:
+
+```erb
+<% if @debrief.pending? || @debrief.transcribing? %>
+  <meta http-equiv="refresh" content="3">
+<% end %>
+```
+
+### Detail Page Actions
+
+Each debrief detail page has:
+- **Resend button** (blue) - Re-sends transcript notification to Claude
+- **Delete button** (red) - Deletes the debrief with confirmation
+
+### Status Badges
+
+- `pending` - Yellow, waiting for transcription job
+- `transcribing` - Blue, Groq API processing
+- `done` - Green, completed
+- `failed` - Red, error occurred
