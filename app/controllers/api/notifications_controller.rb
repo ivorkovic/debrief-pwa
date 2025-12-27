@@ -19,8 +19,9 @@ module Api
     private
 
     def verify_local_request
-      # Only allow requests from localhost (SSH tunnel)
-      unless request.remote_ip == "127.0.0.1" || request.remote_ip == "::1"
+      # Only allow requests from localhost or Docker internal network
+      ip = request.remote_ip
+      unless ip == "127.0.0.1" || ip == "::1" || ip.start_with?("172.")
         head :forbidden
       end
     end
