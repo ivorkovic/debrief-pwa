@@ -1,6 +1,7 @@
 module Api
   class NotificationsController < ApplicationController
     skip_before_action :require_authentication
+    skip_before_action :verify_authenticity_token
     before_action :verify_local_request
 
     # GET /api/unnotified - returns transcripts that haven't been notified
