@@ -10,6 +10,7 @@ export default class extends Controller {
     this.audioBlob = null
     this.startTime = null
     this.timerInterval = null
+    this.wakeLock = null
   }
 
   async start() {
@@ -44,26 +45,46 @@ export default class extends Controller {
       this.startTime = Date.now()
       this.startTimer()
       this.updateUI()
+
+      // Request wake lock to prevent screen sleep during recording
+      if ("wakeLock" in navigator) {
+        try {
+          this.wakeLock = await navigator.wakeLock.request("screen")
+        } catch (err) {
+          console.log("Wake Lock not supported or failed:", err)
+        }
+      }
     } catch (error) {
       console.error("Failed to start recording:", error)
       this.statusTarget.textContent = "Microphone access denied"
     }
   }
 
-  stop() {
+  async stop() {
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
       this.mediaRecorder.stop()
     }
     this.stopTimer()
+
+    if (this.wakeLock) {
+      await this.wakeLock.release()
+      this.wakeLock = null
+    }
     // Don't change state here - onstop will call showPreview
   }
 
-  cancel() {
+  async cancel() {
     // Cancel during recording or preview
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop())
     }
     this.stopTimer()
+
+    if (this.wakeLock) {
+      await this.wakeLock.release()
+      this.wakeLock = null
+    }
+
     this.audioChunks = []
     this.audioBlob = null
     this.state = "idle"
