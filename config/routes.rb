@@ -7,6 +7,12 @@ Rails.application.routes.draw do
   # Debriefs
   resources :debriefs, only: [ :index, :show, :new, :create ]
 
+  # Internal API (localhost only via SSH tunnel)
+  namespace :api do
+    get "unnotified", to: "notifications#index"
+    post "notifications/:id/ack", to: "notifications#ack"
+  end
+
   # Root
   root "debriefs#new"
 

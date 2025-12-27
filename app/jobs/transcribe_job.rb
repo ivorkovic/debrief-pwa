@@ -68,19 +68,25 @@ class TranscribeJob < ApplicationJob
   end
 
   def notify_agent(debrief)
-    return unless Rails.application.credentials.dig(:agent, :notify)
+    # Try to notify via SSH tunnel to Mac (localhost:9999)
+    # If Mac is offline, that's fine - it will catch up on reconnect
+    uri = URI("http://127.0.0.1:9999/notify")
 
-    # Write transcript to temp file
-    timestamp = debrief.created_at.strftime("%Y-%m-%d-%H-%M-%S")
-    transcript_path = "/tmp/debrief_#{timestamp}.md"
+    request = Net::HTTP::Post.new(uri)
+    request.content_type = "application/json"
+    request.body = {
+      id: debrief.id,
+      transcript: debrief.transcript,
+      created_at: debrief.created_at.strftime("%Y-%m-%d %H:%M")
+    }.to_json
 
-    File.write(transcript_path, <<~MARKDOWN)
-      # Debrief #{debrief.created_at.strftime("%Y-%m-%d %H:%M")}
+    Net::HTTP.start(uri.hostname, uri.port, open_timeout: 2, read_timeout: 5) do |http|
+      http.request(request)
+    end
 
-      #{debrief.transcript}
-    MARKDOWN
-
-    # Notify root agent via tmux
-    system("tmux send-keys -t root 'DEBRIEF: #{transcript_path}' Enter")
+    debrief.update!(notified_at: Time.current)
+  rescue Errno::ECONNREFUSED, Errno::ETIMEDOUT, Net::OpenTimeout, Net::ReadTimeout => e
+    # Mac is offline or tunnel not connected - that's ok, it will catch up
+    Rails.logger.info "Notification skipped (Mac offline): #{e.message}"
   end
 end
