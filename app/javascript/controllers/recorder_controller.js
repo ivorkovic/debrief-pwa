@@ -1,22 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["button", "icon", "timer", "status", "form", "audioInput"]
+  static targets = ["button", "icon", "timer", "status", "previewButtons", "recordingButtons"]
 
   connect() {
-    this.recording = false
+    this.state = "idle" // idle, recording, preview
     this.mediaRecorder = null
     this.audioChunks = []
+    this.audioBlob = null
     this.startTime = null
     this.timerInterval = null
-  }
-
-  async toggle() {
-    if (this.recording) {
-      this.stop()
-    } else {
-      await this.start()
-    }
   }
 
   async start() {
@@ -28,6 +21,7 @@ export default class extends Controller {
         }
       })
 
+      this.stream = stream
       this.mediaRecorder = new MediaRecorder(stream, {
         mimeType: this.getSupportedMimeType()
       })
@@ -41,12 +35,12 @@ export default class extends Controller {
       }
 
       this.mediaRecorder.onstop = () => {
-        this.upload()
-        stream.getTracks().forEach(track => track.stop())
+        this.audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder.mimeType })
+        this.showPreview()
       }
 
-      this.mediaRecorder.start(1000) // Collect data every second
-      this.recording = true
+      this.mediaRecorder.start(1000)
+      this.state = "recording"
       this.startTime = Date.now()
       this.startTimer()
       this.updateUI()
@@ -60,22 +54,43 @@ export default class extends Controller {
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
       this.mediaRecorder.stop()
     }
-    this.recording = false
     this.stopTimer()
-    this.updateUI()
-    this.statusTarget.textContent = "Uploading..."
+    // Don't change state here - onstop will call showPreview
   }
 
-  async upload() {
+  cancel() {
+    // Cancel during recording or preview
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop())
+    }
+    this.stopTimer()
+    this.audioChunks = []
+    this.audioBlob = null
+    this.state = "idle"
+    this.timerTarget.textContent = "00:00"
+    this.updateUI()
+  }
+
+  showPreview() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop())
+    }
+    this.state = "preview"
+    this.updateUI()
+  }
+
+  async send() {
+    if (!this.audioBlob) return
+
+    this.statusTarget.textContent = "Uploading..."
+    this.previewButtonsTarget.classList.add("hidden")
+
     const mimeType = this.mediaRecorder.mimeType
-    // iOS Safari uses mp4, others use webm
     const extension = mimeType.includes("mp4") ? "mp4" : "webm"
-    const blob = new Blob(this.audioChunks, { type: mimeType })
 
     const formData = new FormData()
-    formData.append("audio", blob, `debrief_${Date.now()}.${extension}`)
+    formData.append("audio", this.audioBlob, `debrief_${Date.now()}.${extension}`)
 
-    // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 
     try {
@@ -93,11 +108,12 @@ export default class extends Controller {
       } else if (response.ok) {
         window.location.href = "/debriefs"
       } else {
-        this.statusTarget.textContent = "Upload failed. Tap to retry."
-        console.error("Upload failed:", response.status)
+        this.statusTarget.textContent = "Upload failed. Try again."
+        this.previewButtonsTarget.classList.remove("hidden")
       }
     } catch (error) {
-      this.statusTarget.textContent = "Upload failed. Tap to retry."
+      this.statusTarget.textContent = "Upload failed. Try again."
+      this.previewButtonsTarget.classList.remove("hidden")
       console.error("Upload error:", error)
     }
   }
@@ -119,19 +135,25 @@ export default class extends Controller {
   }
 
   updateUI() {
-    if (this.recording) {
-      this.buttonTarget.classList.remove("bg-red-500", "hover:bg-red-600")
-      this.buttonTarget.classList.add("bg-red-600", "animate-pulse")
-      this.iconTarget.classList.remove("rounded-full")
-      this.iconTarget.classList.add("rounded-sm", "w-8", "h-8")
-      this.iconTarget.classList.remove("w-12", "h-12")
-      this.statusTarget.textContent = "Recording... Tap to stop"
-    } else {
+    // Hide all button groups first
+    this.recordingButtonsTarget.classList.add("hidden")
+    this.previewButtonsTarget.classList.add("hidden")
+
+    if (this.state === "idle") {
+      this.buttonTarget.classList.remove("hidden")
       this.buttonTarget.classList.add("bg-red-500", "hover:bg-red-600")
       this.buttonTarget.classList.remove("bg-red-600", "animate-pulse")
       this.iconTarget.classList.add("rounded-full", "w-12", "h-12")
       this.iconTarget.classList.remove("rounded-sm", "w-8", "h-8")
       this.statusTarget.textContent = "Tap to record"
+    } else if (this.state === "recording") {
+      this.buttonTarget.classList.add("hidden")
+      this.recordingButtonsTarget.classList.remove("hidden")
+      this.statusTarget.textContent = "Recording..."
+    } else if (this.state === "preview") {
+      this.buttonTarget.classList.add("hidden")
+      this.previewButtonsTarget.classList.remove("hidden")
+      this.statusTarget.textContent = "Send or cancel?"
     }
   }
 

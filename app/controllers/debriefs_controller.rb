@@ -1,10 +1,11 @@
 class DebriefsController < ApplicationController
+  before_action :set_debrief, only: [ :show, :destroy, :resend ]
+
   def index
     @debriefs = Debrief.recent.limit(50)
   end
 
   def show
-    @debrief = Debrief.find(params[:id])
   end
 
   def new
@@ -21,5 +22,27 @@ class DebriefsController < ApplicationController
     else
       render :new, status: :unprocessable_entity
     end
+  end
+
+  def destroy
+    @debrief.destroy
+    redirect_to debriefs_path, notice: "Recording deleted."
+  end
+
+  def resend
+    if @debrief.done?
+      # Clear notified_at to trigger re-notification
+      @debrief.update!(notified_at: nil)
+      NotifyJob.perform_later(@debrief)
+      redirect_to @debrief, notice: "Resending to Claude..."
+    else
+      redirect_to @debrief, alert: "Can only resend completed transcriptions."
+    end
+  end
+
+  private
+
+  def set_debrief
+    @debrief = Debrief.find(params[:id])
   end
 end

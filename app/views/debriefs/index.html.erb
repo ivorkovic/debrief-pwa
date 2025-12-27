@@ -16,6 +16,11 @@
     </div>
   <% end %>
 
+  <!-- Auto-refresh if any debriefs are still processing -->
+  <% if @debriefs.any? { |d| d.transcribing? } %>
+    <meta http-equiv="refresh" content="3">
+  <% end %>
+
   <!-- List -->
   <div class="divide-y divide-gray-800">
     <% if @debriefs.empty? %>

@@ -5,7 +5,11 @@ Rails.application.routes.draw do
   delete "logout", to: "sessions#destroy"
 
   # Debriefs
-  resources :debriefs, only: [ :index, :show, :new, :create ]
+  resources :debriefs, only: [ :index, :show, :new, :create, :destroy ] do
+    member do
+      post :resend
+    end
+  end
 
   # Internal API (localhost only via SSH tunnel)
   namespace :api do
