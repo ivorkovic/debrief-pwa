@@ -15,7 +15,13 @@ Rails.application.routes.draw do
   namespace :api do
     get "unnotified", to: "notifications#index"
     post "notifications/:id/ack", to: "notifications#ack"
+    post "debriefs/:id/complete", to: "notifications#complete"
   end
+
+  # Push notifications
+  get "push/vapid_public_key", to: "push_subscriptions#vapid_public_key"
+  post "push/subscribe", to: "push_subscriptions#create"
+  delete "push/unsubscribe", to: "push_subscriptions#destroy"
 
   # Root
   root "debriefs#new"

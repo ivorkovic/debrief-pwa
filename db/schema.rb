@@ -10,8 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_27_231605) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_27_233437) do
   create_table "debriefs", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.text "completion_summary"
     t.datetime "created_at", null: false
     t.text "error_message"
     t.datetime "notified_at"
@@ -22,5 +24,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_27_231605) do
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_debriefs_on_created_at"
     t.index ["status"], name: "index_debriefs_on_status"
+  end
+
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.string "auth"
+    t.datetime "created_at", null: false
+    t.string "endpoint"
+    t.string "p256dh"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
   end
 end

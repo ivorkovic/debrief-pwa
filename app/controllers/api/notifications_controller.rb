@@ -17,6 +17,20 @@ module Api
       render json: { ok: true }
     end
 
+    # POST /api/debriefs/:id/complete - Claude reports task completion
+    def complete
+      debrief = Debrief.find(params[:id])
+      debrief.update!(
+        completion_summary: params[:summary],
+        completed_at: Time.current
+      )
+
+      # Send push notification to all subscribers
+      PushNotificationJob.perform_later(debrief) if debrief.completion_summary.present?
+
+      render json: { ok: true }
+    end
+
     private
 
     def verify_local_request

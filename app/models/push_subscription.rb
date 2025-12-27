@@ -1,0 +1,2 @@
+class PushSubscription < ApplicationRecord
+end
