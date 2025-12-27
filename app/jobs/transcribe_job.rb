@@ -1,3 +1,6 @@
+require "net/http"
+require "uri"
+
 class TranscribeJob < ApplicationJob
   queue_as :default
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
