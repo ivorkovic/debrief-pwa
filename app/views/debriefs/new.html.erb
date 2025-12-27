@@ -25,49 +25,39 @@
     <button
       type="button"
       data-action="click->recorder#start"
-      data-recorder-target="button"
+      data-recorder-target="idleButton"
       class="w-32 h-32 rounded-full bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-500/50 transition-all flex items-center justify-center"
     >
-      <div data-recorder-target="icon" class="w-12 h-12 rounded-full bg-white"></div>
+      <div class="w-12 h-12 rounded-full bg-white"></div>
     </button>
 
-    <!-- Recording state: Stop and Cancel buttons -->
-    <div data-recorder-target="recordingButtons" class="hidden flex gap-6">
-      <button
-        type="button"
-        data-action="click->recorder#cancel"
-        class="w-20 h-20 rounded-full bg-gray-600 hover:bg-gray-500 focus:outline-none focus:ring-4 focus:ring-gray-500/50 transition-all flex items-center justify-center"
-      >
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-      <button
-        type="button"
-        data-action="click->recorder#stop"
-        class="w-32 h-32 rounded-full bg-red-600 animate-pulse focus:outline-none focus:ring-4 focus:ring-red-500/50 transition-all flex items-center justify-center"
-      >
-        <div class="w-10 h-10 rounded-sm bg-white"></div>
-      </button>
-    </div>
+    <!-- Recording state: Stop button (centered, same position) -->
+    <button
+      type="button"
+      data-action="click->recorder#stop"
+      data-recorder-target="recordingButton"
+      class="hidden w-32 h-32 rounded-full bg-red-600 animate-pulse focus:outline-none focus:ring-4 focus:ring-red-500/50 transition-all flex items-center justify-center"
+    >
+      <div class="w-10 h-10 rounded-sm bg-white"></div>
+    </button>
 
-    <!-- Preview state: Send and Cancel buttons -->
-    <div data-recorder-target="previewButtons" class="hidden flex gap-6">
+    <!-- Preview state: Cancel (X) and Send (checkmark) - equal sized -->
+    <div data-recorder-target="previewButtons" class="hidden flex gap-8">
       <button
         type="button"
         data-action="click->recorder#cancel"
-        class="w-20 h-20 rounded-full bg-gray-600 hover:bg-gray-500 focus:outline-none focus:ring-4 focus:ring-gray-500/50 transition-all flex items-center justify-center"
+        class="w-24 h-24 rounded-full bg-gray-600 hover:bg-gray-500 focus:outline-none focus:ring-4 focus:ring-gray-500/50 transition-all flex items-center justify-center"
       >
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
       <button
         type="button"
         data-action="click->recorder#send"
-        class="w-32 h-32 rounded-full bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-500/50 transition-all flex items-center justify-center"
+        class="w-24 h-24 rounded-full bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-500/50 transition-all flex items-center justify-center"
       >
-        <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
         </svg>
       </button>

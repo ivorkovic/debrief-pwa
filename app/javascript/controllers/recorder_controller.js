@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["button", "icon", "timer", "status", "previewButtons", "recordingButtons"]
+  static targets = ["idleButton", "recordingButton", "timer", "status", "previewButtons"]
 
   connect() {
     this.state = "idle" // idle, recording, preview
@@ -135,23 +135,18 @@ export default class extends Controller {
   }
 
   updateUI() {
-    // Hide all button groups first
-    this.recordingButtonsTarget.classList.add("hidden")
+    // Hide all buttons first
+    this.idleButtonTarget.classList.add("hidden")
+    this.recordingButtonTarget.classList.add("hidden")
     this.previewButtonsTarget.classList.add("hidden")
 
     if (this.state === "idle") {
-      this.buttonTarget.classList.remove("hidden")
-      this.buttonTarget.classList.add("bg-red-500", "hover:bg-red-600")
-      this.buttonTarget.classList.remove("bg-red-600", "animate-pulse")
-      this.iconTarget.classList.add("rounded-full", "w-12", "h-12")
-      this.iconTarget.classList.remove("rounded-sm", "w-8", "h-8")
+      this.idleButtonTarget.classList.remove("hidden")
       this.statusTarget.textContent = "Tap to record"
     } else if (this.state === "recording") {
-      this.buttonTarget.classList.add("hidden")
-      this.recordingButtonsTarget.classList.remove("hidden")
+      this.recordingButtonTarget.classList.remove("hidden")
       this.statusTarget.textContent = "Recording..."
     } else if (this.state === "preview") {
-      this.buttonTarget.classList.add("hidden")
       this.previewButtonsTarget.classList.remove("hidden")
       this.statusTarget.textContent = "Send or cancel?"
     }
