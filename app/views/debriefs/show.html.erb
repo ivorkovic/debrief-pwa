@@ -1,4 +1,9 @@
 <div class="min-h-screen bg-gray-900">
+  <!-- Auto-refresh while processing -->
+  <% if @debrief.pending? || @debrief.transcribing? %>
+    <meta http-equiv="refresh" content="3">
+  <% end %>
+
   <!-- Header -->
   <header class="flex items-center justify-between p-4 border-b border-gray-800">
     <%= link_to debriefs_path, class: "text-blue-400 hover:text-blue-300" do %>

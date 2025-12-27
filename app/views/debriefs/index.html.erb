@@ -17,7 +17,7 @@
   <% end %>
 
   <!-- Auto-refresh if any debriefs are still processing -->
-  <% if @debriefs.any? { |d| d.transcribing? } %>
+  <% if @debriefs.any? { |d| d.pending? || d.transcribing? } %>
     <meta http-equiv="refresh" content="3">
   <% end %>
 
