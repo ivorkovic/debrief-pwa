@@ -2,27 +2,30 @@ import { Controller } from "@hotwired/stimulus"
 
 // Handles push notification subscription
 export default class extends Controller {
-  static targets = ["status", "prompt"]
+  static targets = ["status", "button"]
 
   async connect() {
     // Check if push is supported
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      this.hidePrompt()
+      this.updateStatus("Not supported")
+      this.disableButton()
       return
     }
 
     // Check current permission state
     if (Notification.permission === "granted") {
       await this.subscribe()
-      this.hidePrompt()
     } else if (Notification.permission === "denied") {
-      this.updateStatus("Blocked")
+      this.updateStatus("Blocked in browser")
+      this.disableButton()
     }
   }
 
-  hidePrompt() {
-    if (this.hasPromptTarget) {
-      this.promptTarget.classList.add("hidden")
+  disableButton() {
+    if (this.hasButtonTarget) {
+      this.buttonTarget.disabled = true
+      this.buttonTarget.classList.add("opacity-50", "cursor-not-allowed")
+      this.buttonTarget.classList.remove("hover:text-gray-300")
     }
   }
 
@@ -31,9 +34,9 @@ export default class extends Controller {
 
     if (permission === "granted") {
       await this.subscribe()
-      this.hidePrompt()
     } else {
-      this.updateStatus("Denied")
+      this.updateStatus("Blocked in browser")
+      this.disableButton()
     }
   }
 
@@ -66,10 +69,11 @@ export default class extends Controller {
         })
       })
 
-      this.updateStatus("Notifications enabled")
+      this.updateStatus("Notifications on")
+      this.disableButton()
     } catch (error) {
       console.error("Push subscription failed:", error)
-      this.updateStatus("Subscription failed")
+      this.updateStatus("Failed to enable")
     }
   }
 
