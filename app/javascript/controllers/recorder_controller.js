@@ -11,21 +11,73 @@ export default class extends Controller {
     this.startTime = null
     this.timerInterval = null
     this.wakeLock = null
+    this.stream = null
+
+    // iOS PWA: Handle app backgrounding - iOS kills audio sessions
+    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+  }
+
+  disconnect() {
+    // Cleanup when controller is removed from DOM
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+    this.cleanup()
+  }
+
+  handleVisibilityChange() {
+    if (document.hidden && this.state === "recording") {
+      // iOS kills audio when backgrounded - auto-stop to prevent zombie state
+      console.log("App backgrounded during recording - auto-stopping")
+      this.stop()
+    }
+  }
+
+  cleanup() {
+    // Stop all tracks
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop())
+      this.stream = null
+    }
+    // Stop timer
+    this.stopTimer()
+    // Release wake lock
+    if (this.wakeLock) {
+      this.wakeLock.release().catch(() => {})
+      this.wakeLock = null
+    }
+    // Clear audio data
+    this.audioChunks = []
+    this.audioBlob = null
+    this.mediaRecorder = null
   }
 
   async start() {
     try {
+      // iOS-friendly audio constraints (no sampleRate - iOS rejects it)
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          sampleRate: 16000
+          echoCancellation: false,  // More reliable on iOS
+          noiseSuppression: false,  // More reliable on iOS
+          autoGainControl: true
         }
       })
 
       this.stream = stream
-      this.mediaRecorder = new MediaRecorder(stream, {
-        mimeType: this.getSupportedMimeType()
-      })
+
+      // Get MIME type, try-catch MediaRecorder construction for iOS
+      const mimeType = this.getSupportedMimeType()
+      try {
+        if (mimeType) {
+          this.mediaRecorder = new MediaRecorder(stream, { mimeType })
+        } else {
+          // Let browser choose default
+          this.mediaRecorder = new MediaRecorder(stream)
+        }
+      } catch (e) {
+        console.warn("MediaRecorder with mimeType failed, using default:", e)
+        this.mediaRecorder = new MediaRecorder(stream)
+      }
 
       this.audioChunks = []
 
@@ -38,6 +90,15 @@ export default class extends Controller {
       this.mediaRecorder.onstop = () => {
         this.audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder.mimeType })
         this.showPreview()
+      }
+
+      // iOS fix: Handle MediaRecorder errors
+      this.mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event.error)
+        this.statusTarget.textContent = "Recording failed"
+        this.cleanup()
+        this.state = "idle"
+        this.updateUI()
       }
 
       this.mediaRecorder.start(1000)
@@ -56,13 +117,45 @@ export default class extends Controller {
       }
     } catch (error) {
       console.error("Failed to start recording:", error)
-      this.statusTarget.textContent = "Microphone access denied"
+      // Better error messages for different error types
+      if (error.name === "NotAllowedError") {
+        this.statusTarget.textContent = "Microphone access denied"
+      } else if (error.name === "NotFoundError") {
+        this.statusTarget.textContent = "No microphone found"
+      } else if (error.name === "OverconstrainedError") {
+        this.statusTarget.textContent = "Microphone incompatible"
+      } else {
+        this.statusTarget.textContent = "Recording failed. Try again."
+      }
+      // Cleanup any partial resources
+      this.cleanup()
     }
   }
 
   async stop() {
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+      // iOS fix: onstop might not fire - add timeout fallback
+      const stopPromise = new Promise((resolve) => {
+        const originalOnStop = this.mediaRecorder.onstop
+        this.mediaRecorder.onstop = () => {
+          if (originalOnStop) originalOnStop.call(this.mediaRecorder)
+          resolve()
+        }
+        // Timeout fallback for iOS - if onstop doesn't fire within 2s
+        setTimeout(() => {
+          if (this.mediaRecorder && this.mediaRecorder.state === "inactive") {
+            console.log("MediaRecorder onstop timeout - forcing preview")
+            if (this.audioChunks.length > 0) {
+              this.audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder?.mimeType || "audio/mp4" })
+              this.showPreview()
+            }
+            resolve()
+          }
+        }, 2000)
+      })
+
       this.mediaRecorder.stop()
+      await stopPromise
     }
     this.stopTimer()
 
@@ -74,19 +167,7 @@ export default class extends Controller {
   }
 
   async cancel() {
-    // Cancel during recording or preview
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop())
-    }
-    this.stopTimer()
-
-    if (this.wakeLock) {
-      await this.wakeLock.release()
-      this.wakeLock = null
-    }
-
-    this.audioChunks = []
-    this.audioBlob = null
+    this.cleanup()
     this.state = "idle"
     this.timerTarget.textContent = "00:00"
     this.updateUI()
@@ -95,6 +176,7 @@ export default class extends Controller {
   showPreview() {
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop())
+      this.stream = null
     }
     this.state = "preview"
     this.updateUI()
@@ -106,7 +188,7 @@ export default class extends Controller {
     this.statusTarget.textContent = "Uploading..."
     this.previewButtonsTarget.classList.add("hidden")
 
-    const mimeType = this.mediaRecorder.mimeType
+    const mimeType = this.mediaRecorder?.mimeType || "audio/mp4"
     const extension = mimeType.includes("mp4") ? "mp4" : "webm"
 
     const formData = new FormData()
@@ -174,19 +256,23 @@ export default class extends Controller {
   }
 
   getSupportedMimeType() {
+    // iOS Safari ONLY supports audio/mp4 - check it FIRST
     const types = [
+      "audio/mp4",
       "audio/webm;codecs=opus",
       "audio/webm",
-      "audio/mp4",
       "audio/ogg;codecs=opus"
     ]
 
     for (const type of types) {
       if (MediaRecorder.isTypeSupported(type)) {
+        console.log("Using MIME type:", type)
         return type
       }
     }
 
-    return "audio/webm"
+    // Return empty to let browser use default (safer than hardcoding unsupported type)
+    console.warn("No supported MIME type found, using browser default")
+    return ""
   }
 }
