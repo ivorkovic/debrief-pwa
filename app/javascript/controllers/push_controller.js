@@ -78,31 +78,33 @@ export default class extends Controller {
 
   async subscribe() {
     try {
-      console.log("Push: Getting service worker registration...")
+      this.updateStatus("Getting SW...")
       const registration = await navigator.serviceWorker.ready
-      console.log("Push: Service worker ready")
 
-      // Get VAPID public key from server
-      console.log("Push: Fetching VAPID key...")
+      this.updateStatus("Getting key...")
       const response = await fetch("/push/vapid_public_key")
       const { vapid_public_key } = await response.json()
-      console.log("Push: Got VAPID key")
 
-      // Convert VAPID key to Uint8Array
       const applicationServerKey = this.urlBase64ToUint8Array(vapid_public_key)
 
-      // Subscribe to push
-      console.log("Push: Subscribing to push manager...")
-      const subscription = await registration.pushManager.subscribe({
+      // This is where iOS often hangs
+      this.updateStatus("Push subscribe...")
+
+      // Add timeout for iOS
+      const subscribePromise = registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey
       })
-      console.log("Push: Got subscription:", subscription.endpoint)
 
-      // Send subscription to server
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout - iOS bug")), 10000)
+      )
+
+      const subscription = await Promise.race([subscribePromise, timeoutPromise])
+
+      this.updateStatus("Saving...")
       const keys = subscription.toJSON().keys
-      console.log("Push: Sending to server...")
-      const saveResponse = await fetch("/push/subscribe", {
+      await fetch("/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -111,12 +113,11 @@ export default class extends Controller {
           auth: keys.auth
         })
       })
-      console.log("Push: Server response:", saveResponse.status)
 
       this.updateStatus("Notifications on")
       this.disableButton()
     } catch (error) {
-      console.error("Push subscription failed:", error)
+      console.error("Push failed:", error)
       this.updateStatus("Failed: " + error.message.substring(0, 20))
     }
   }
