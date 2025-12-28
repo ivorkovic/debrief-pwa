@@ -12,12 +12,25 @@ export default class extends Controller {
       return
     }
 
-    // Check current permission state
-    if (Notification.permission === "granted") {
-      await this.subscribe()
-    } else if (Notification.permission === "denied") {
+    // Check current permission and subscription state
+    if (Notification.permission === "denied") {
       this.updateStatus("Blocked in browser")
       this.disableButton()
+      return
+    }
+
+    // Check if already subscribed
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+
+      if (subscription) {
+        this.updateStatus("Notifications on")
+        this.disableButton()
+      }
+      // If permission granted but no subscription, leave button active
+    } catch (error) {
+      console.error("Error checking subscription:", error)
     }
   }
 
