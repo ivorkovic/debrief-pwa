@@ -1,7 +1,7 @@
 // Service Worker for Debrief PWA
 // Based on Fizzy's stable iOS implementation
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `debrief-${CACHE_VERSION}`;
 
 // Install event - take control immediately
@@ -82,8 +82,10 @@ self.addEventListener('fetch', (event) => {
       caches.match(event.request).then((cachedResponse) => {
         const fetchPromise = fetch(event.request).then((networkResponse) => {
           if (networkResponse.ok) {
+            // Clone FIRST before response body can be consumed
+            const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse.clone());
+              cache.put(event.request, responseToCache);
             });
           }
           return networkResponse;
