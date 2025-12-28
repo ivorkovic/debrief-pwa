@@ -51,15 +51,23 @@ export default class extends Controller {
   }
 
   async requestPermission() {
-    console.log("Push: Requesting permission...")
-    const permission = await Notification.requestPermission()
-    console.log("Push: Permission result:", permission)
+    try {
+      console.log("Push: Requesting permission...")
+      this.updateStatus("Requesting...")
 
-    if (permission === "granted") {
-      await this.subscribe()
-    } else {
-      this.updateStatus("Blocked in browser")
-      this.disableButton()
+      const permission = await Notification.requestPermission()
+      console.log("Push: Permission result:", permission)
+
+      if (permission === "granted") {
+        this.updateStatus("Subscribing...")
+        await this.subscribe()
+      } else {
+        this.updateStatus("Blocked")
+        this.disableButton()
+      }
+    } catch (error) {
+      console.error("Permission error:", error)
+      this.updateStatus("Error: " + error.message.substring(0, 15))
     }
   }
 
