@@ -64,7 +64,8 @@ class TranscribeJob < ApplicationJob
       raise "Groq API error: #{response.code} - #{response.body}"
     end
 
-    response.body.strip
+    # Force UTF-8 encoding - Groq returns Croatian characters (č, ć, š, ž, đ) in ASCII-8BIT
+    response.body.force_encoding("UTF-8").encode("UTF-8", invalid: :replace, undef: :replace).strip
   end
 
   def notify_agent(debrief)
