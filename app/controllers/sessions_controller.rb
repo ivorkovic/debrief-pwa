@@ -7,9 +7,8 @@ class SessionsController < ApplicationController
   def create
     if (identity = Identity.find_by(email_address: params[:email]))
       magic_link = identity.magic_links.create!
-      # TODO: Enable email when domain is verified in Resend
-      # AuthenticationMailer.magic_link(identity, magic_link).deliver_later
-      redirect_to verify_session_path(email: identity.email_address, code: magic_link.code)
+      AuthenticationMailer.magic_link(identity, magic_link).deliver_later
+      redirect_to verify_session_path(email: identity.email_address), notice: "Check your email for a 6-digit code"
     else
       flash.now[:alert] = "Email not found"
       render :new, status: :unprocessable_entity
@@ -18,7 +17,6 @@ class SessionsController < ApplicationController
 
   def verify
     @email = params[:email]
-    @code = params[:code]
   end
 
   def confirm

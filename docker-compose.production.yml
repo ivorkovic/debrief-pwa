@@ -9,7 +9,7 @@ services:
       - SOLID_QUEUE_IN_PUMA=true
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
-      - RESEND_API_KEY=${RESEND_API_KEY}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
     volumes:
       - debrief-storage:/rails/storage
     extra_hosts:

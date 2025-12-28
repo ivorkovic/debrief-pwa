@@ -60,12 +60,12 @@ Rails.application.configure do
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "debrief.fiumed.cloud", protocol: "https" }
 
-  # Resend SMTP configuration
+  # Google Workspace SMTP
   config.action_mailer.smtp_settings = {
-    address: "smtp.resend.com",
+    address: "smtp.gmail.com",
     port: 587,
-    user_name: "resend",
-    password: ENV["RESEND_API_KEY"],
+    user_name: "ivor.kovic@fiumed.hr",
+    password: ENV["GMAIL_APP_PASSWORD"],
     authentication: :plain,
     enable_starttls_auto: true
   }
