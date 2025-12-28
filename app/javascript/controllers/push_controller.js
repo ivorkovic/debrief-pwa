@@ -35,6 +35,8 @@ export default class extends Controller {
       if (subscription) {
         this.updateStatus("Notifications on")
         this.disableButton()
+        // Re-sync subscription with server to ensure user_id is set
+        this.syncSubscription(subscription)
       }
       // If permission granted but no subscription, leave button active
     } catch (error) {
@@ -121,6 +123,23 @@ export default class extends Controller {
       // Show more of the error for debugging
       const msg = error.message || error.name || "Unknown error"
       this.updateStatus("Failed: " + msg.substring(0, 30))
+    }
+  }
+
+  async syncSubscription(subscription) {
+    try {
+      const keys = subscription.toJSON().keys
+      await fetch("/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth
+        })
+      })
+    } catch (error) {
+      console.error("Sync subscription failed:", error)
     }
   }
 
