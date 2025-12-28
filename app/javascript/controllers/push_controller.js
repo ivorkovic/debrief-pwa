@@ -117,8 +117,10 @@ export default class extends Controller {
       this.updateStatus("Notifications on")
       this.disableButton()
     } catch (error) {
-      console.error("Push failed:", error)
-      this.updateStatus("Failed: " + error.message.substring(0, 20))
+      console.error("Push subscription failed:", error.name, error.message, error)
+      // Show more of the error for debugging
+      const msg = error.message || error.name || "Unknown error"
+      this.updateStatus("Failed: " + msg.substring(0, 30))
     }
   }
 

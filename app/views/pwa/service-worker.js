@@ -1,7 +1,7 @@
 // Service Worker for Debrief PWA
 // Based on Fizzy's stable iOS implementation
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `debrief-${CACHE_VERSION}`;
 
 // Install event - take control immediately
@@ -58,9 +58,17 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => {
+        .catch(async () => {
           // Fallback to cache if network fails
-          return caches.match(event.request);
+          const cached = await caches.match(event.request);
+          // If no cache, return a basic offline page to prevent blank screen
+          if (!cached) {
+            return new Response(
+              '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline</title></head><body style="background:#111827;color:white;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h1>Offline</h1><p>Please check your connection and try again.</p></div></body></html>',
+              { status: 503, headers: { 'Content-Type': 'text/html' } }
+            );
+          }
+          return cached;
         })
     );
     return;
