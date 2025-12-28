@@ -275,12 +275,19 @@ puts "VAPID_PRIVATE_KEY=#{keys.private_key}"
 
 1. **Check job logs:**
    ```bash
-   ssh root@46.224.17.255 "cd /root/debrief && docker compose logs --tail=50 | grep TranscribeJob"
+   ssh root@46.224.17.255 "docker logs debrief-debrief-1 --tail=50 | grep TranscribeJob"
    ```
 
 2. **Check Groq API key:**
    ```bash
    rails credentials:show
+   ```
+
+3. **Encoding error with Croatian characters (č, ć, š, ž, đ):**
+   - Groq API returns text in ASCII-8BIT encoding
+   - Fix in `transcribe_job.rb`: force UTF-8 encoding on response
+   ```ruby
+   response.body.force_encoding("UTF-8").encode("UTF-8", invalid: :replace, undef: :replace).strip
    ```
 
 ### iOS Safari issues
@@ -298,7 +305,7 @@ puts "VAPID_PRIVATE_KEY=#{keys.private_key}"
 
 2. **Check subscription exists:**
    ```bash
-   ssh root@46.224.17.255 'cd /root/debrief && docker compose -f docker-compose.production.yml exec -T debrief bin/rails runner "puts PushSubscription.count"'
+   ssh root@46.224.17.255 'docker exec debrief-debrief-1 bin/rails runner "puts PushSubscription.count"'
    ```
 
 3. **Check VAPID keys are set:**
@@ -315,6 +322,15 @@ puts "VAPID_PRIVATE_KEY=#{keys.private_key}"
 5. **Button shows "Getting SW..." and hangs:**
    - Service worker not registered - check `application.html.erb`
    - This was the main bug we fixed - the registration script was missing
+
+6. **Chrome "Registration failed - push service error":**
+   - Manifest must include `"gcm_sender_id": "103953800507"` for Chrome
+   - Clear site data in Chrome DevTools → Application → Storage
+   - Hard refresh and try again
+
+7. **Service worker Response.clone() error:**
+   - Fixed in v3 - clone response BEFORE it's consumed
+   - Bump `CACHE_VERSION` in service-worker.js to force update
 
 ## Architecture Decisions
 
