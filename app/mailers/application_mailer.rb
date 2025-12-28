@@ -1,4 +1,4 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: "Debrief <noreply@fiumed.hr>"
+  default from: "Debrief <onboarding@resend.dev>"
   layout "mailer"
 end
