@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(bin/rails generate:*)",
+      "Bash(bin/rails db:migrate:*)",
+      "Bash(bin/rails db:seed:*)",
+      "Bash(bin/rails runner:*)",
+      "Bash(bin/rails routes:*)",
+      "Bash(bin/rails test:*)",
+      "Bash(ruby -c:*)",
+      "Bash(RAILS_ENV=test bin/rails test:*)",
+      "Bash(bin/rails:*)",
+      "Bash(ruby:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(ssh -i ~/.ssh/id_rsa_hetzner root@46.224.17.255 \"cat /root/debrief/.env 2>/dev/null || echo ''No .env file''\")",
+      "Bash(security find-generic-password:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(env)",
+      "Bash(find:*)",
+      "Bash(ssh -i ~/.ssh/id_rsa_hetzner root@188.245.246.244 \"cat /root/fizzy/.env 2>/dev/null | grep -i resend || cat /root/fizzy/docker-compose*.yml 2>/dev/null | grep -i resend || echo ''Not found on Fizzy server''\")",
+      "Bash(ssh:*)",
+      "mcp__plugin_compound-engineering_pw__browser_navigate",
+      "mcp__plugin_compound-engineering_pw__browser_click",
+      "mcp__plugin_compound-engineering_pw__browser_close",
+      "mcp__plugin_compound-engineering_pw__browser_type"
+    ]
+  }
+}
