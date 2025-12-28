@@ -31,10 +31,10 @@ class DebriefsController < ApplicationController
 
   def resend
     if @debrief.done?
-      # Clear notified_at to trigger re-notification
+      # Clear notified_at to trigger re-notification (also enables catchup via /api/unnotified)
       @debrief.update!(notified_at: nil)
       NotifyJob.perform_later(@debrief)
-      redirect_to @debrief, notice: "Resending to Claude..."
+      redirect_to @debrief, notice: "Queued for Claude. Check your Mac listener is running."
     else
       redirect_to @debrief, alert: "Can only resend completed transcriptions."
     end
