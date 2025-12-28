@@ -12,6 +12,14 @@ export default class extends Controller {
       return
     }
 
+    // iOS requires PWA to be installed for push
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (isIOS && !this.isStandalone()) {
+      this.updateStatus("Add to Home Screen first")
+      this.disableButton()
+      return
+    }
+
     // Check current permission and subscription state
     if (Notification.permission === "denied") {
       this.updateStatus("Blocked in browser")
@@ -43,7 +51,9 @@ export default class extends Controller {
   }
 
   async requestPermission() {
+    console.log("Push: Requesting permission...")
     const permission = await Notification.requestPermission()
+    console.log("Push: Permission result:", permission)
 
     if (permission === "granted") {
       await this.subscribe()
@@ -53,26 +63,38 @@ export default class extends Controller {
     }
   }
 
+  isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.navigator.standalone === true
+  }
+
   async subscribe() {
     try {
+      console.log("Push: Getting service worker registration...")
       const registration = await navigator.serviceWorker.ready
+      console.log("Push: Service worker ready")
 
       // Get VAPID public key from server
+      console.log("Push: Fetching VAPID key...")
       const response = await fetch("/push/vapid_public_key")
       const { vapid_public_key } = await response.json()
+      console.log("Push: Got VAPID key")
 
       // Convert VAPID key to Uint8Array
       const applicationServerKey = this.urlBase64ToUint8Array(vapid_public_key)
 
       // Subscribe to push
+      console.log("Push: Subscribing to push manager...")
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey
       })
+      console.log("Push: Got subscription:", subscription.endpoint)
 
       // Send subscription to server
       const keys = subscription.toJSON().keys
-      await fetch("/push/subscribe", {
+      console.log("Push: Sending to server...")
+      const saveResponse = await fetch("/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -81,12 +103,13 @@ export default class extends Controller {
           auth: keys.auth
         })
       })
+      console.log("Push: Server response:", saveResponse.status)
 
       this.updateStatus("Notifications on")
       this.disableButton()
     } catch (error) {
       console.error("Push subscription failed:", error)
-      this.updateStatus("Failed to enable")
+      this.updateStatus("Failed: " + error.message.substring(0, 20))
     }
   }
 
