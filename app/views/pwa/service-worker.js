@@ -1,7 +1,7 @@
 // Service Worker for Debrief PWA
 // Based on Fizzy's stable iOS implementation
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `debrief-${CACHE_VERSION}`;
 
 // Install event - take control immediately
@@ -38,8 +38,11 @@ self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API calls and form submissions - let them fail naturally if offline
+  // Only handle HTTP(S) requests - skip chrome-extension://, etc (fixes Brave)
   const url = new URL(event.request.url);
+  if (!url.protocol.startsWith('http')) return;
+
+  // Skip API calls and form submissions - let them fail naturally if offline
   if (url.pathname.startsWith('/debriefs') && event.request.method === 'POST') return;
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/push/')) return;
