@@ -2,7 +2,7 @@
 <html>
   <head>
     <title><%= content_for(:title) || "Debrief" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="application-name" content="Debrief">
@@ -25,8 +25,22 @@
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-          .then(reg => console.log('SW registered:', reg.scope))
+          .then(reg => {
+            console.log('SW registered:', reg.scope);
+            // Check for updates on page focus (iOS recovery)
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                reg.update().catch(() => {});
+              }
+            });
+          })
           .catch(err => console.error('SW registration failed:', err));
+
+        // Handle service worker updates - reload when new version activates
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('New service worker activated, reloading...');
+          window.location.reload();
+        });
       }
     </script>
   </head>

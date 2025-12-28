@@ -1,5 +1,92 @@
 // Service Worker for Debrief PWA
-// Handles push notifications and offline caching
+// Based on Fizzy's stable iOS implementation
+
+const CACHE_VERSION = 'v1';
+const CACHE_NAME = `debrief-${CACHE_VERSION}`;
+
+// Install event - take control immediately
+self.addEventListener('install', (event) => {
+  console.log('Service Worker installing, version:', CACHE_VERSION);
+  // Skip waiting to activate immediately
+  self.skipWaiting();
+});
+
+// Activate event - claim all clients immediately
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activating');
+  event.waitUntil(
+    Promise.all([
+      // Take control of all pages immediately
+      self.clients.claim(),
+      // Clean up old caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => name.startsWith('debrief-') && name !== CACHE_NAME)
+            .map((name) => {
+              console.log('Deleting old cache:', name);
+              return caches.delete(name);
+            })
+        );
+      })
+    ])
+  );
+});
+
+// Fetch event - Network-first with cache fallback (Fizzy's pattern)
+self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return;
+
+  // Skip API calls and form submissions - let them fail naturally if offline
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/debriefs') && event.request.method === 'POST') return;
+  if (url.pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith('/push/')) return;
+
+  // For document requests (HTML pages) - network-first with cache fallback
+  if (event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-cache' })
+        .then((response) => {
+          // Cache successful responses
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Fallback to cache if network fails
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // For static assets - stale-while-revalidate
+  if (event.request.destination === 'style' ||
+      event.request.destination === 'script' ||
+      event.request.destination === 'image') {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          if (networkResponse.ok) {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, networkResponse.clone());
+            });
+          }
+          return networkResponse;
+        }).catch(() => cachedResponse);
+
+        return cachedResponse || fetchPromise;
+      })
+    );
+    return;
+  }
+});
 
 // Push notification handler
 self.addEventListener("push", async (event) => {
@@ -15,29 +102,36 @@ self.addEventListener("push", async (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || "Debrief", options)
+    Promise.all([
+      self.registration.showNotification(data.title || "Debrief", options),
+      // Update badge count if supported
+      self.navigator.setAppBadge?.(data.badge || 0)
+    ])
   );
 });
 
-// Notification click handler
-self.addEventListener("notificationclick", function(event) {
+// Notification click handler - improved to handle frozen app state
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const path = event.notification.data?.path || "/";
+  const url = new URL(path, self.location.origin).href;
 
   event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
-      // Try to focus existing window
-      for (let client of clientList) {
-        const clientPath = new URL(client.url).pathname;
-        if (clientPath === path && "focus" in client) {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Try to find and focus an existing window
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) {
           return client.focus();
         }
       }
-      // Open new window if none found
-      if (clients.openWindow) {
-        return clients.openWindow(path);
+      // Try to find any window and navigate it
+      const focused = clientList.find((client) => client.focused);
+      if (focused) {
+        return focused.navigate(url).then(() => focused.focus());
       }
+      // Open new window as last resort
+      return clients.openWindow(url);
     })
   );
 });
