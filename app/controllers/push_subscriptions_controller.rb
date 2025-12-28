@@ -1,4 +1,5 @@
 class PushSubscriptionsController < ApplicationController
+  skip_before_action :require_authentication, only: [ :vapid_public_key ]
   skip_before_action :verify_authenticity_token, only: [ :create ]
 
   # GET /push/vapid_public_key
