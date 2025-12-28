@@ -1,8 +1,9 @@
 Rails.application.routes.draw do
   # Authentication
-  get "login", to: "sessions#new"
-  post "login", to: "sessions#create"
-  delete "logout", to: "sessions#destroy"
+  resource :session, only: %i[new create destroy] do
+    get :verify, on: :collection
+    post :confirm, on: :collection
+  end
 
   # Debriefs
   resources :debriefs, only: [ :index, :show, :new, :create, :destroy ] do

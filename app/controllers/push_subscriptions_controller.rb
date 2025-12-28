@@ -15,6 +15,7 @@ class PushSubscriptionsController < ApplicationController
   def create
     subscription = PushSubscription.find_or_initialize_by(endpoint: params[:endpoint])
     subscription.update!(
+      user: current_user,
       p256dh: params[:p256dh],
       auth: params[:auth],
       user_agent: request.user_agent

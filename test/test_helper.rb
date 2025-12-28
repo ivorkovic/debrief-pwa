@@ -14,8 +14,10 @@ end
 
 class ActionDispatch::IntegrationTest
   def sign_in_as(user_name = "Ivor")
-    pin = user_name == "Ivor" ? "17121984" : "15062016"
-    post login_path, params: { pin: pin }
-    follow_redirect!
+    email = user_name == "Ivor" ? "ivor.kovic@fiumed.hr" : "marija.vidacic@fiumed.hr"
+    identity = Identity.find_or_create_by!(email_address: email)
+    identity.users.find_or_create_by!(name: user_name)
+    session = identity.sessions.create!
+    cookies[:session_token] = { value: session.token, httponly: true }
   end
 end

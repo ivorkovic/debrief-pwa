@@ -3,6 +3,7 @@ class PushNotificationJob < ApplicationJob
 
   def perform(debrief)
     return unless debrief.completion_summary.present?
+    return unless debrief.user.present?
 
     message = {
       title: "Task Completed",
@@ -11,7 +12,7 @@ class PushNotificationJob < ApplicationJob
       data: { path: "/debriefs/#{debrief.id}" }
     }
 
-    PushSubscription.find_each do |subscription|
+    debrief.user.push_subscriptions.find_each do |subscription|
       send_notification(subscription, message)
     rescue WebPush::ExpiredSubscription, WebPush::InvalidSubscription
       subscription.destroy

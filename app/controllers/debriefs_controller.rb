@@ -2,7 +2,7 @@ class DebriefsController < ApplicationController
   before_action :set_debrief, only: [ :show, :destroy, :resend ]
 
   def index
-    @debriefs = Debrief.recent.limit(50)
+    @debriefs = current_user.debriefs.recent.limit(50)
   end
 
   def show
@@ -13,7 +13,7 @@ class DebriefsController < ApplicationController
   end
 
   def create
-    @debrief = Debrief.new(recorded_by: session[:user])
+    @debrief = current_user.debriefs.new(recorded_by: current_user.name)
     @debrief.audio.attach(params[:audio])
 
     if @debrief.save
@@ -43,6 +43,6 @@ class DebriefsController < ApplicationController
   private
 
   def set_debrief
-    @debrief = Debrief.find(params[:id])
+    @debrief = current_user.debriefs.find(params[:id])
   end
 end

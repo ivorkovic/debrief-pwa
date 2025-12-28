@@ -1,4 +1,5 @@
 class Debrief < ApplicationRecord
+  belongs_to :user, optional: true
   has_one_attached :audio
 
   enum :status, {
