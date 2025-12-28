@@ -332,6 +332,20 @@ puts "VAPID_PRIVATE_KEY=#{keys.private_key}"
    - Fixed in v3 - clone response BEFORE it's consumed
    - Bump `CACHE_VERSION` in service-worker.js to force update
 
+8. **Brave browser cache errors:**
+   - Error: `Failed to execute 'put' on 'Cache': Request scheme 'chrome-extension' is unsupported`
+   - Fixed in v4 - filter non-HTTP(S) protocols in fetch handler
+   - Brave extensions intercept requests, causing chrome-extension:// URLs to reach the SW
+
+## Browser Compatibility
+
+| Browser | Push Notifications | Service Worker | Notes |
+|---------|-------------------|----------------|-------|
+| Chrome (Mac) | ✅ | ✅ | Full support |
+| Brave (Mac) | ✅ | ✅ | Fixed in v4 - filters chrome-extension:// |
+| Safari (Mac) | ✅ | ✅ | Full support |
+| Safari (iOS) | ✅* | ✅ | Must install as PWA, iOS 16.4+ |
+
 ## Architecture Decisions
 
 ### Why SSH tunnel instead of polling/webhooks?
