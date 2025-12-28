@@ -15,6 +15,22 @@ Debrief is a voice memo PWA that records audio, transcribes via Groq Whisper, an
 
 **NEVER confuse these servers. Debrief is at 46.224.17.255.**
 
+### Users
+
+| Email | Name | Notes |
+|-------|------|-------|
+| ivor.kovic@fiumed.hr | Ivor | Primary user |
+| marija.vidacic@fiumed.hr | Marija | Secondary user |
+
+### Authentication
+
+Magic link email authentication (Fizzy-style):
+1. User enters email → receives 6-digit code via email
+2. User enters code → session created (90-day cookie)
+3. Sessions stored in `sessions` table with secure token
+
+**Email:** Sent via Google Workspace SMTP (ivor.kovic@fiumed.hr)
+
 ### Deployment
 
 ```bash
@@ -23,6 +39,12 @@ git add -A && git commit -m "message" && git push origin main
 
 # Deploy to production
 ssh -i ~/.ssh/id_rsa_hetzner root@46.224.17.255 "cd /root/debrief && git pull && docker compose -f docker-compose.production.yml up -d --build"
+
+# Run migrations (if needed)
+ssh -i ~/.ssh/id_rsa_hetzner root@46.224.17.255 "docker exec debrief-debrief-1 bin/rails db:migrate"
+
+# Run seeds (to add users)
+ssh -i ~/.ssh/id_rsa_hetzner root@46.224.17.255 "docker exec debrief-debrief-1 bin/rails db:seed"
 ```
 
 ### Check Logs
@@ -79,12 +101,28 @@ After changing `service-worker.js`:
 | File | Purpose |
 |------|---------|
 | `app/jobs/transcribe_job.rb` | Groq API transcription |
+| `app/jobs/push_notification_job.rb` | Send push notifications (user-scoped) |
 | `app/views/pwa/service-worker.js` | Push notifications, caching |
 | `app/views/pwa/manifest.json.erb` | PWA manifest |
 | `app/javascript/controllers/recorder_controller.js` | Audio recording |
 | `app/javascript/controllers/push_controller.js` | Push subscription UI |
 | `app/controllers/push_subscriptions_controller.rb` | VAPID endpoint |
+| `app/controllers/sessions_controller.rb` | Magic link auth flow |
+| `app/controllers/concerns/authentication.rb` | Session management concern |
+| `app/mailers/authentication_mailer.rb` | Magic link email |
 | `docker-compose.production.yml` | Production deployment |
+
+## Data Models
+
+### Authentication (Fizzy-style)
+- **Identity** - Email address holder, has_many sessions/users/magic_links
+- **MagicLink** - 6-digit code, expires in 15 minutes, one-time use
+- **Session** - Secure token, 90-day cookie, tracks user_agent/ip
+- **User** - Name, belongs_to identity, has_many debriefs/push_subscriptions
+
+### App Data
+- **Debrief** - Audio recording with transcription, belongs_to user
+- **PushSubscription** - Web push endpoint, belongs_to user (IMPORTANT: must have user_id)
 
 ## Environment
 
@@ -112,9 +150,18 @@ ssh -i ~/.ssh/id_rsa_hetzner root@46.224.17.255 "docker exec debrief-debrief-1 b
 4. Check logs for errors
 5. Hard refresh browser to get new service worker
 
+## Environment Variables (Server)
+
+Located at `/root/debrief/.env` on server:
+- `VAPID_PUBLIC_KEY` - Web push public key
+- `VAPID_PRIVATE_KEY` - Web push private key
+- `RAILS_MASTER_KEY` - Rails credentials key
+- `GMAIL_APP_PASSWORD` - Google Workspace app password for SMTP
+
 ## Do NOT
 
 - Touch the Flow server (188.245.246.244)
-- Commit VAPID private keys
+- Commit VAPID private keys or Gmail app password
 - Use Kamal (this app uses docker-compose)
 - Forget to bump CACHE_VERSION when changing service worker
+- Send push notifications without user_id on subscription (will silently fail)
