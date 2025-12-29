@@ -96,6 +96,22 @@ After changing `service-worker.js`:
 2. Deploy
 3. User must hard refresh (Cmd+Shift+R) or clear site data
 
+### iOS PWA App Icon Not Updating
+
+**Critical:** iOS Safari **ignores** `manifest.json` icons completely. It only reads from `<link rel="apple-touch-icon">` in HTML head.
+
+**Requirements:**
+- File: `public/apple-touch-icon.png` (180x180px)
+- Link tag: `<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=X">`
+- Format: Square PNG, no rounded corners (iOS applies its own mask)
+- Cache busting: Increment `?v=X` query param when updating icon
+
+**To update icon:**
+1. Replace `public/apple-touch-icon.png` (180x180)
+2. Increment version in `application.html.erb`: `?v=2` → `?v=3`
+3. Deploy
+4. User must: Delete app → Close Safari → Reopen → Visit site → Add to Home Screen
+
 ## Key Files
 
 | File | Purpose |
