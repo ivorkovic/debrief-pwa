@@ -28,7 +28,12 @@
       "mcp__plugin_compound-engineering_pw__browser_navigate",
       "mcp__plugin_compound-engineering_pw__browser_click",
       "mcp__plugin_compound-engineering_pw__browser_close",
-      "mcp__plugin_compound-engineering_pw__browser_type"
+      "mcp__plugin_compound-engineering_pw__browser_type",
+      "Skill(writebook)",
+      "Bash(writebook book:*)",
+      "Bash(writebook page show:*)",
+      "Bash(writebook page update:*)",
+      "mcp__imagen__generate_image"
     ]
   }
 }
