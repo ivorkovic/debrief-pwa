@@ -33,7 +33,8 @@
       "Bash(writebook book:*)",
       "Bash(writebook page show:*)",
       "Bash(writebook page update:*)",
-      "mcp__imagen__generate_image"
+      "mcp__imagen__generate_image",
+      "Bash(md5:*)"
     ]
   }
 }
