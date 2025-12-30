@@ -1,4 +1,6 @@
 class DebriefsController < ApplicationController
+  # PWA caches pages with stale CSRF tokens - skip for uploads (auth still required)
+  skip_before_action :verify_authenticity_token, only: [ :create ]
   before_action :set_debrief, only: [ :show, :destroy, :resend ]
 
   def index
