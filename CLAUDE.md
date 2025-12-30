@@ -96,6 +96,18 @@ After changing `service-worker.js`:
 2. Deploy
 3. User must hard refresh (Cmd+Shift+R) or clear site data
 
+### Croatian characters crashing listener
+
+**Error:** `invalid byte sequence in US-ASCII` in `/tmp/debrief-listener.log`
+
+**Fix:** Ensure `/Users/ivorkovic/scripts/debrief-listener.rb` has:
+```ruby
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
+```
+
+Then restart: `launchctl stop com.ivorkovic.debrief-listener && launchctl start com.ivorkovic.debrief-listener`
+
 ### iOS PWA App Icon Not Updating
 
 **Critical:** iOS Safari **ignores** `manifest.json` icons completely. It only reads from `<link rel="apple-touch-icon">` in HTML head.
