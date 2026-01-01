@@ -124,6 +124,56 @@ Then restart: `launchctl stop com.ivorkovic.debrief-listener && launchctl start 
 3. Deploy
 4. User must: Delete app → Close Safari → Reopen → Visit site → Add to Home Screen
 
+### iOS Safari: NEVER use Permissions API for microphone
+
+**Critical:** `navigator.permissions.query({ name: "microphone" })` is **NOT supported on iOS Safari** and will break audio recording silently - files upload as empty!
+
+**Symptoms:**
+- Recording appears to work (timer runs)
+- Upload succeeds
+- Groq returns: `"file is empty"` error
+- Audio player shows 00:00 duration
+
+**Root cause:** iOS Safari doesn't support Permissions API for microphone. Any code that uses it before `getUserMedia()` will fail silently or throw, potentially breaking the recording flow.
+
+**Solution:** Never use Permissions API on iOS. Just call `getUserMedia()` directly - iOS will prompt if needed.
+
+### iOS Safari: Microphone permission asked repeatedly
+
+**Problem:** iOS asks for microphone permission every other recording session.
+
+**Root cause:** Incomplete stream cleanup confuses iOS permission state tracking.
+
+**Fix (in `recorder_controller.js`):**
+1. Stop stream tracks IMMEDIATELY when recording stops (not deferred to callbacks)
+2. Set `onstop` callback once in `start()`, don't re-bind in `stop()`
+3. Use flag to prevent double-processing of onstop
+
+```javascript
+// In finalizeRecording() - stop stream FIRST
+if (this.stream) {
+  this.stream.getTracks().forEach(track => track.stop())
+  this.stream = null
+}
+// Then create blob
+this.audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder?.mimeType })
+```
+
+### Upload hardening
+
+The recorder has built-in resilience:
+- **60-second timeout** - Prevents indefinite hangs on slow connections
+- **3 retry attempts** - Exponential backoff (2s, 4s, 8s)
+- **50MB file size limit** - Enough for ~90 min of voice audio
+- **Network check** - Validates `navigator.onLine` before upload
+
+Config in `recorder_controller.js`:
+```javascript
+static MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+static UPLOAD_TIMEOUT = 60000 // 60 seconds
+static MAX_RETRIES = 3
+```
+
 ## Key Files
 
 | File | Purpose |
@@ -149,7 +199,10 @@ Then restart: `launchctl stop com.ivorkovic.debrief-listener && launchctl start 
 - **User** - Name, belongs_to identity, has_many debriefs/push_subscriptions
 
 ### App Data
-- **Debrief** - Audio recording with transcription, belongs_to user
+- **Debrief** - Audio or text entry with transcription, belongs_to user
+  - `entry_type` enum: `audio` (default) or `text`
+  - Audio entries: uploaded, transcribed via Groq, then notify
+  - Text entries: skip transcription, notify immediately
 - **PushSubscription** - Web push endpoint, belongs_to user (IMPORTANT: must have user_id)
 
 ## Environment
