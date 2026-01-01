@@ -10,11 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_28_190720) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_01_114419) do
   create_table "debriefs", force: :cascade do |t|
     t.datetime "completed_at"
     t.text "completion_summary"
     t.datetime "created_at", null: false
+    t.string "entry_type", default: "audio", null: false
     t.text "error_message"
     t.datetime "notified_at"
     t.datetime "processed_at"

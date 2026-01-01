@@ -1,10 +1,16 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["idleButton", "recordingButton", "timer", "status", "previewButtons"]
+  static targets = ["idleButton", "recordingButton", "timer", "status", "previewButtons", "modeToggle", "textInput", "textButtons", "recordSection", "textSection"]
+
+  // Upload config
+  static MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB - enough for ~90 min of voice audio
+  static UPLOAD_TIMEOUT = 60000 // 60 seconds
+  static MAX_RETRIES = 3
 
   connect() {
-    this.state = "idle" // idle, recording, preview
+    this.state = "idle" // idle, recording, preview, text_input
+    this.mode = "audio" // audio or text
     this.mediaRecorder = null
     this.audioChunks = []
     this.audioBlob = null
@@ -12,16 +18,44 @@ export default class extends Controller {
     this.timerInterval = null
     this.wakeLock = null
     this.stream = null
+    this.permissionGranted = localStorage.getItem("mic_permission") === "granted"
 
     // iOS PWA: Handle app backgrounding - iOS kills audio sessions
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     document.addEventListener("visibilitychange", this.handleVisibilityChange)
+
+    // Listen for permission changes
+    this.setupPermissionListener()
   }
 
   disconnect() {
     // Cleanup when controller is removed from DOM
     document.removeEventListener("visibilitychange", this.handleVisibilityChange)
     this.cleanup()
+  }
+
+  async setupPermissionListener() {
+    // Listen for permission state changes (user toggling in settings)
+    try {
+      const permission = await navigator.permissions.query({ name: "microphone" })
+      permission.addEventListener("change", () => {
+        if (permission.state === "granted") {
+          localStorage.setItem("mic_permission", "granted")
+          this.permissionGranted = true
+        } else {
+          localStorage.removeItem("mic_permission")
+          this.permissionGranted = false
+        }
+      })
+      // Sync initial state
+      if (permission.state === "granted") {
+        localStorage.setItem("mic_permission", "granted")
+        this.permissionGranted = true
+      }
+    } catch (e) {
+      // Permissions API not supported (older browsers) - continue without caching
+      console.log("Permissions API not available")
+    }
   }
 
   handleVisibilityChange() {
@@ -53,6 +87,17 @@ export default class extends Controller {
 
   async start() {
     try {
+      // Check permission state BEFORE requesting (fixes iOS "every other time" issue)
+      try {
+        const permission = await navigator.permissions.query({ name: "microphone" })
+        if (permission.state === "denied") {
+          this.statusTarget.textContent = "Microphone access denied. Check settings."
+          return
+        }
+      } catch (e) {
+        // Permissions API not available - proceed with getUserMedia
+      }
+
       // iOS-friendly audio constraints (no sampleRate - iOS rejects it)
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -62,6 +107,10 @@ export default class extends Controller {
           autoGainControl: true
         }
       })
+
+      // Mark permission as granted for future checks
+      localStorage.setItem("mic_permission", "granted")
+      this.permissionGranted = true
 
       this.stream = stream
 
@@ -80,6 +129,7 @@ export default class extends Controller {
       }
 
       this.audioChunks = []
+      this.onstopCalled = false // Flag to prevent double processing
 
       this.mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -87,9 +137,11 @@ export default class extends Controller {
         }
       }
 
+      // Set onstop ONCE here - don't re-bind in stop()
       this.mediaRecorder.onstop = () => {
-        this.audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder.mimeType })
-        this.showPreview()
+        if (this.onstopCalled) return // Prevent double processing
+        this.onstopCalled = true
+        this.finalizeRecording()
       }
 
       // iOS fix: Handle MediaRecorder errors
@@ -120,6 +172,8 @@ export default class extends Controller {
       // Better error messages for different error types
       if (error.name === "NotAllowedError") {
         this.statusTarget.textContent = "Microphone access denied"
+        localStorage.removeItem("mic_permission")
+        this.permissionGranted = false
       } else if (error.name === "NotFoundError") {
         this.statusTarget.textContent = "No microphone found"
       } else if (error.name === "OverconstrainedError") {
@@ -132,30 +186,30 @@ export default class extends Controller {
     }
   }
 
+  finalizeRecording() {
+    // Stop stream IMMEDIATELY (fixes iOS permission persistence)
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop())
+      this.stream = null
+    }
+    this.audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder?.mimeType || "audio/mp4" })
+    this.state = "preview"
+    this.updateUI()
+  }
+
   async stop() {
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
-      // iOS fix: onstop might not fire - add timeout fallback
-      const stopPromise = new Promise((resolve) => {
-        const originalOnStop = this.mediaRecorder.onstop
-        this.mediaRecorder.onstop = () => {
-          if (originalOnStop) originalOnStop.call(this.mediaRecorder)
-          resolve()
-        }
-        // Timeout fallback for iOS - if onstop doesn't fire within 2s
-        setTimeout(() => {
-          if (this.mediaRecorder && this.mediaRecorder.state === "inactive") {
-            console.log("MediaRecorder onstop timeout - forcing preview")
-            if (this.audioChunks.length > 0) {
-              this.audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder?.mimeType || "audio/mp4" })
-              this.showPreview()
-            }
-            resolve()
-          }
-        }, 2000)
-      })
-
+      // Stop the recorder - onstop callback (set in start()) will call finalizeRecording
       this.mediaRecorder.stop()
-      await stopPromise
+
+      // iOS fallback: if onstop doesn't fire within 2s, force finalization
+      setTimeout(() => {
+        if (!this.onstopCalled && this.audioChunks.length > 0) {
+          console.log("MediaRecorder onstop timeout - forcing finalization")
+          this.onstopCalled = true
+          this.finalizeRecording()
+        }
+      }, 2000)
     }
     this.stopTimer()
 
@@ -163,7 +217,6 @@ export default class extends Controller {
       await this.wakeLock.release()
       this.wakeLock = null
     }
-    // Don't change state here - onstop will call showPreview
   }
 
   async cancel() {
@@ -173,17 +226,75 @@ export default class extends Controller {
     this.updateUI()
   }
 
-  showPreview() {
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop())
-      this.stream = null
+  // Mode switching for audio/text toggle
+  selectMode(event) {
+    const mode = event.currentTarget.dataset.mode
+    this.mode = mode
+
+    // Update toggle button styles
+    this.modeToggleTargets.forEach(btn => {
+      if (btn.dataset.mode === mode) {
+        btn.classList.add("bg-gray-700", "text-white")
+        btn.classList.remove("text-gray-400")
+      } else {
+        btn.classList.remove("bg-gray-700", "text-white")
+        btn.classList.add("text-gray-400")
+      }
+    })
+
+    if (mode === "text") {
+      this.state = "text_input"
+      this.recordSectionTarget.classList.add("hidden")
+      this.textSectionTarget.classList.remove("hidden")
+      this.textInputTarget.focus()
+    } else {
+      this.state = "idle"
+      this.recordSectionTarget.classList.remove("hidden")
+      this.textSectionTarget.classList.add("hidden")
     }
-    this.state = "preview"
     this.updateUI()
+  }
+
+  async sendText() {
+    const text = this.textInputTarget.value.trim()
+    if (!text) {
+      this.statusTarget.textContent = "Type something first"
+      return
+    }
+
+    this.statusTarget.textContent = "Sending..."
+    this.textButtonsTarget.classList.add("hidden")
+
+    const formData = new FormData()
+    formData.append("text_content", text)
+    formData.append("entry_type", "text")
+
+    await this.uploadWithRetry(formData)
+  }
+
+  cancelText() {
+    this.textInputTarget.value = ""
+    this.statusTarget.textContent = "Type your message"
+    this.textButtonsTarget.classList.remove("hidden")
   }
 
   async send() {
     if (!this.audioBlob) return
+
+    // Check file size before upload
+    if (this.audioBlob.size > this.constructor.MAX_FILE_SIZE) {
+      const sizeMB = Math.round(this.audioBlob.size / 1024 / 1024)
+      this.statusTarget.textContent = `Recording too large (${sizeMB}MB). Max 50MB.`
+      this.previewButtonsTarget.classList.remove("hidden")
+      return
+    }
+
+    // Check network connectivity
+    if (!navigator.onLine) {
+      this.statusTarget.textContent = "No internet connection"
+      this.previewButtonsTarget.classList.remove("hidden")
+      return
+    }
 
     this.statusTarget.textContent = "Uploading..."
     this.previewButtonsTarget.classList.add("hidden")
@@ -193,8 +304,15 @@ export default class extends Controller {
 
     const formData = new FormData()
     formData.append("audio", this.audioBlob, `debrief_${Date.now()}.${extension}`)
+    formData.append("entry_type", "audio")
 
+    await this.uploadWithRetry(formData)
+  }
+
+  async uploadWithRetry(formData, attempt = 1) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.constructor.UPLOAD_TIMEOUT)
 
     try {
       const response = await fetch("/debriefs", {
@@ -203,20 +321,45 @@ export default class extends Controller {
           "X-CSRF-Token": csrfToken,
           "Accept": "text/html"
         },
-        body: formData
+        body: formData,
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (response.redirected) {
         window.location.href = response.url
       } else if (response.ok) {
         window.location.href = "/debriefs"
       } else {
-        this.statusTarget.textContent = "Upload failed. Try again."
-        this.previewButtonsTarget.classList.remove("hidden")
+        throw new Error(`Server error: ${response.status}`)
       }
     } catch (error) {
-      this.statusTarget.textContent = "Upload failed. Try again."
-      this.previewButtonsTarget.classList.remove("hidden")
+      clearTimeout(timeoutId)
+
+      // Retry logic with exponential backoff
+      if (attempt < this.constructor.MAX_RETRIES) {
+        const delay = Math.pow(2, attempt) * 1000 // 2s, 4s, 8s
+        this.statusTarget.textContent = `Retry ${attempt}/${this.constructor.MAX_RETRIES - 1}...`
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return this.uploadWithRetry(formData, attempt + 1)
+      }
+
+      // All retries failed
+      if (error.name === "AbortError") {
+        this.statusTarget.textContent = "Upload timed out. Try again."
+      } else if (!navigator.onLine) {
+        this.statusTarget.textContent = "Connection lost. Try again."
+      } else {
+        this.statusTarget.textContent = "Upload failed. Try again."
+      }
+
+      // Show appropriate buttons based on mode
+      if (this.mode === "text") {
+        this.textButtonsTarget.classList.remove("hidden")
+      } else {
+        this.previewButtonsTarget.classList.remove("hidden")
+      }
       console.error("Upload error:", error)
     }
   }
@@ -238,10 +381,15 @@ export default class extends Controller {
   }
 
   updateUI() {
-    // Hide all buttons first
+    // Hide all audio buttons first
     this.idleButtonTarget.classList.add("hidden")
     this.recordingButtonTarget.classList.add("hidden")
     this.previewButtonsTarget.classList.add("hidden")
+
+    // Hide text buttons if they exist
+    if (this.hasTextButtonsTarget) {
+      this.textButtonsTarget.classList.add("hidden")
+    }
 
     if (this.state === "idle") {
       this.idleButtonTarget.classList.remove("hidden")
@@ -252,6 +400,11 @@ export default class extends Controller {
     } else if (this.state === "preview") {
       this.previewButtonsTarget.classList.remove("hidden")
       this.statusTarget.textContent = "Send or cancel?"
+    } else if (this.state === "text_input") {
+      if (this.hasTextButtonsTarget) {
+        this.textButtonsTarget.classList.remove("hidden")
+      }
+      this.statusTarget.textContent = "Type your message"
     }
   }
 

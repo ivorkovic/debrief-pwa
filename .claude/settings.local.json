@@ -34,7 +34,21 @@
       "Bash(writebook page show:*)",
       "Bash(writebook page update:*)",
       "mcp__imagen__generate_image",
-      "Bash(md5:*)"
+      "Bash(md5:*)",
+      "Bash(lsof:*)",
+      "Bash(tmux has-session:*)",
+      "Bash(tmux list-windows:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(curl:*)",
+      "Bash(tmux list-sessions:*)",
+      "Bash(tmux switch-client:*)",
+      "Bash(tmux attach:*)",
+      "Bash(tmux send-keys -t root:brain \"cd ~ && claude\" Enter)",
+      "Bash(pkill:*)",
+      "Bash(launchctl list:*)",
+      "Bash(launchctl stop:*)",
+      "Bash(launchctl start:*)",
+      "Bash(git restore:*)"
     ]
   }
 }

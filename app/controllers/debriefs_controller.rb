@@ -16,11 +16,28 @@ class DebriefsController < ApplicationController
 
   def create
     @debrief = current_user.debriefs.new(recorded_by: current_user.name)
-    @debrief.audio.attach(params[:audio])
+
+    if params[:entry_type] == "text"
+      # Text entry: set transcript directly, skip transcription job
+      @debrief.entry_type = :text
+      @debrief.transcript = params[:text_content]
+      @debrief.status = :done
+      @debrief.processed_at = Time.current
+    else
+      # Audio entry: attach file, queue transcription
+      @debrief.entry_type = :audio
+      @debrief.audio.attach(params[:audio])
+    end
 
     if @debrief.save
-      TranscribeJob.perform_later(@debrief)
-      redirect_to debriefs_path, notice: "Recording uploaded. Transcription in progress..."
+      if @debrief.audio?
+        TranscribeJob.perform_later(@debrief)
+        redirect_to debriefs_path, notice: "Recording uploaded. Transcription in progress..."
+      else
+        # Text entries notify immediately (already done status)
+        NotifyJob.perform_later(@debrief)
+        redirect_to debriefs_path, notice: "Message sent."
+      end
     else
       render :new, status: :unprocessable_entity
     end
