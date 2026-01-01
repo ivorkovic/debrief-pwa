@@ -67,9 +67,11 @@
       </div>
     <% end %>
 
-    <!-- Transcript -->
+    <!-- Transcript / Message -->
     <div class="bg-gray-800 rounded-lg p-4">
-      <h2 class="text-gray-400 text-sm font-medium mb-2">Transcript</h2>
+      <h2 class="text-gray-400 text-sm font-medium mb-2">
+        <%= @debrief.audio? ? "Transcript" : "Message" %>
+      </h2>
       <% if @debrief.transcript.present? %>
         <div class="text-white whitespace-pre-wrap"><%= @debrief.transcript %></div>
       <% elsif @debrief.pending? || @debrief.transcribing? %>
@@ -78,6 +80,39 @@
         <p class="text-red-400">Transcription failed: <%= @debrief.error_message %></p>
       <% end %>
     </div>
+
+    <!-- Attachments -->
+    <% if @debrief.attachments.attached? %>
+      <div class="bg-gray-800 rounded-lg p-4">
+        <h2 class="text-gray-400 text-sm font-medium mb-3">
+          Attachments (<%= @debrief.attachments.count %>)
+        </h2>
+        <div class="space-y-2">
+          <% @debrief.attachments.each do |attachment| %>
+            <div class="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
+              <% if attachment.content_type.start_with?("image/") %>
+                <%= image_tag url_for(attachment), class: "w-12 h-12 object-cover rounded" %>
+              <% else %>
+                <div class="w-12 h-12 bg-gray-600 rounded flex items-center justify-center">
+                  <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <p class="text-white text-sm truncate"><%= attachment.filename %></p>
+                <p class="text-gray-500 text-xs"><%= number_to_human_size(attachment.byte_size) %></p>
+              </div>
+              <%= link_to url_for(attachment), target: "_blank", class: "text-blue-400 hover:text-blue-300" do %>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
 
     <!-- Actions -->
     <div class="flex gap-3 pt-4">
