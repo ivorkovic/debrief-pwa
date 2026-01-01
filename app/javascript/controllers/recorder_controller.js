@@ -23,39 +23,12 @@ export default class extends Controller {
     // iOS PWA: Handle app backgrounding - iOS kills audio sessions
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
     document.addEventListener("visibilitychange", this.handleVisibilityChange)
-
-    // Listen for permission changes
-    this.setupPermissionListener()
   }
 
   disconnect() {
     // Cleanup when controller is removed from DOM
     document.removeEventListener("visibilitychange", this.handleVisibilityChange)
     this.cleanup()
-  }
-
-  async setupPermissionListener() {
-    // Listen for permission state changes (user toggling in settings)
-    try {
-      const permission = await navigator.permissions.query({ name: "microphone" })
-      permission.addEventListener("change", () => {
-        if (permission.state === "granted") {
-          localStorage.setItem("mic_permission", "granted")
-          this.permissionGranted = true
-        } else {
-          localStorage.removeItem("mic_permission")
-          this.permissionGranted = false
-        }
-      })
-      // Sync initial state
-      if (permission.state === "granted") {
-        localStorage.setItem("mic_permission", "granted")
-        this.permissionGranted = true
-      }
-    } catch (e) {
-      // Permissions API not supported (older browsers) - continue without caching
-      console.log("Permissions API not available")
-    }
   }
 
   handleVisibilityChange() {
@@ -87,17 +60,6 @@ export default class extends Controller {
 
   async start() {
     try {
-      // Check permission state BEFORE requesting (fixes iOS "every other time" issue)
-      try {
-        const permission = await navigator.permissions.query({ name: "microphone" })
-        if (permission.state === "denied") {
-          this.statusTarget.textContent = "Microphone access denied. Check settings."
-          return
-        }
-      } catch (e) {
-        // Permissions API not available - proceed with getUserMedia
-      }
-
       // iOS-friendly audio constraints (no sampleRate - iOS rejects it)
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
