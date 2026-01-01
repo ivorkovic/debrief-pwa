@@ -1,6 +1,7 @@
 class Debrief < ApplicationRecord
   belongs_to :user, optional: true
   has_one_attached :audio
+  has_many_attached :attachments
 
   enum :status, {
     pending: "pending",

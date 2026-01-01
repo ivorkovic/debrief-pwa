@@ -2,6 +2,8 @@ require "net/http"
 require "uri"
 
 class NotifyJob < ApplicationJob
+  include Rails.application.routes.url_helpers
+
   queue_as :default
   retry_on StandardError, wait: 5.seconds, attempts: 3
 
@@ -16,7 +18,8 @@ class NotifyJob < ApplicationJob
       id: debrief.id,
       transcript: debrief.transcript,
       recorded_by: debrief.recorded_by,
-      created_at: debrief.created_at.strftime("%Y-%m-%d %H:%M")
+      created_at: debrief.created_at.strftime("%Y-%m-%d %H:%M"),
+      attachments: build_attachments(debrief)
     }.to_json
 
     Net::HTTP.start(uri.hostname, uri.port, open_timeout: 2, read_timeout: 5) do |http|
@@ -28,5 +31,19 @@ class NotifyJob < ApplicationJob
          SocketError, Net::OpenTimeout, Net::ReadTimeout => e
     # Mac is offline or tunnel not connected - that's ok, Mac will catch up via /api/unnotified
     Rails.logger.info "Notification skipped (Mac offline): #{e.message}"
+  end
+
+  private
+
+  def build_attachments(debrief)
+    return [] unless debrief.attachments.attached?
+
+    debrief.attachments.map do |attachment|
+      {
+        filename: attachment.filename.to_s,
+        content_type: attachment.content_type,
+        url: rails_blob_url(attachment, host: "https://debrief.fiumed.cloud")
+      }
+    end
   end
 end

@@ -1,5 +1,7 @@
 module Api
   class NotificationsController < ApplicationController
+    include Rails.application.routes.url_helpers
+
     skip_before_action :require_authentication
     skip_before_action :verify_authenticity_token
     before_action :verify_local_request
@@ -46,8 +48,21 @@ module Api
         id: debrief.id,
         transcript: debrief.transcript,
         recorded_by: debrief.recorded_by,
-        created_at: debrief.created_at.strftime("%Y-%m-%d %H:%M")
+        created_at: debrief.created_at.strftime("%Y-%m-%d %H:%M"),
+        attachments: build_attachments(debrief)
       }
+    end
+
+    def build_attachments(debrief)
+      return [] unless debrief.attachments.attached?
+
+      debrief.attachments.map do |attachment|
+        {
+          filename: attachment.filename.to_s,
+          content_type: attachment.content_type,
+          url: rails_blob_url(attachment, host: "https://debrief.fiumed.cloud")
+        }
+      end
     end
   end
 end

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["idleButton", "recordingButton", "timer", "status", "previewButtons", "modeToggle", "textInput", "textButtons", "recordSection", "textSection"]
+  static targets = ["idleButton", "recordingButton", "timer", "status", "previewButtons", "modeToggle", "textInput", "textButtons", "recordSection", "textSection", "fileInput", "filePreview"]
 
   // Upload config
   static MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB - enough for ~90 min of voice audio
@@ -19,6 +19,7 @@ export default class extends Controller {
     this.wakeLock = null
     this.stream = null
     this.permissionGranted = localStorage.getItem("mic_permission") === "granted"
+    this.selectedFiles = [] // Files selected for text mode upload
 
     // iOS PWA: Handle app backgrounding - iOS kills audio sessions
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
@@ -219,8 +220,8 @@ export default class extends Controller {
 
   async sendText() {
     const text = this.textInputTarget.value.trim()
-    if (!text) {
-      this.statusTarget.textContent = "Type something first"
+    if (!text && this.selectedFiles.length === 0) {
+      this.statusTarget.textContent = "Type something or attach files"
       return
     }
 
@@ -228,16 +229,82 @@ export default class extends Controller {
     this.textButtonsTarget.classList.add("hidden")
 
     const formData = new FormData()
-    formData.append("text_content", text)
+    formData.append("text_content", text || "(attachments only)")
     formData.append("entry_type", "text")
+
+    // Add selected files
+    this.selectedFiles.forEach(file => {
+      formData.append("attachments[]", file)
+    })
 
     await this.uploadWithRetry(formData)
   }
 
   cancelText() {
     this.textInputTarget.value = ""
+    this.selectedFiles = []
+    this.renderFilePreview()
     this.statusTarget.textContent = "Type your message"
     this.textButtonsTarget.classList.remove("hidden")
+  }
+
+  // File attachment methods
+  openFilePicker() {
+    this.fileInputTarget.click()
+  }
+
+  filesSelected(event) {
+    const files = Array.from(event.target.files)
+    // Add to existing files (allows multiple picks)
+    this.selectedFiles = [...this.selectedFiles, ...files]
+    this.renderFilePreview()
+    // Reset input so same file can be selected again if removed
+    event.target.value = ""
+  }
+
+  removeFile(event) {
+    const index = parseInt(event.currentTarget.dataset.index)
+    this.selectedFiles.splice(index, 1)
+    this.renderFilePreview()
+  }
+
+  renderFilePreview() {
+    if (!this.hasFilePreviewTarget) return
+
+    if (this.selectedFiles.length === 0) {
+      this.filePreviewTarget.innerHTML = ""
+      return
+    }
+
+    const html = this.selectedFiles.map((file, index) => {
+      const isImage = file.type.startsWith("image/")
+      const icon = isImage
+        ? `<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`
+        : `<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`
+      const size = this.formatFileSize(file.size)
+      return `
+        <div class="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+          <div class="flex items-center gap-2 min-w-0">
+            ${icon}
+            <span class="text-white text-sm truncate">${file.name}</span>
+            <span class="text-gray-500 text-xs">${size}</span>
+          </div>
+          <button type="button" data-action="click->recorder#removeFile" data-index="${index}" class="text-gray-500 hover:text-red-400 ml-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      `
+    }).join("")
+
+    this.filePreviewTarget.innerHTML = html
+  }
+
+  formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + " B"
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB"
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB"
   }
 
   async send() {

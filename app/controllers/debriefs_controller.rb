@@ -23,6 +23,13 @@ class DebriefsController < ApplicationController
       @debrief.transcript = params[:text_content]
       @debrief.status = :done
       @debrief.processed_at = Time.current
+
+      # Attach any files (images, PDFs, etc.)
+      if params[:attachments].present?
+        Array(params[:attachments]).each do |file|
+          @debrief.attachments.attach(file) if file.present?
+        end
+      end
     else
       # Audio entry: attach file, queue transcription
       @debrief.entry_type = :audio
