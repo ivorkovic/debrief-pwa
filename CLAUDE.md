@@ -203,7 +203,29 @@ static MAX_RETRIES = 3
   - `entry_type` enum: `audio` (default) or `text`
   - Audio entries: uploaded, transcribed via Groq, then notify
   - Text entries: skip transcription, notify immediately
+  - `has_many_attached :attachments` - images, PDFs, docs attached to text entries
 - **PushSubscription** - Web push endpoint, belongs_to user (IMPORTANT: must have user_id)
+
+## File Attachments (Write Mode)
+
+Users can attach files when sending text messages:
+
+**Supported formats:** Images, PDFs, text files, docs, spreadsheets
+
+**How it works:**
+1. User taps "Attach files" in Write mode
+2. iOS opens photo library/Files app
+3. Selected files appear in preview with remove button
+4. On send, files are uploaded via Active Storage
+5. Notification includes attachment URLs
+6. Mac listener downloads to `/tmp/debrief_attachments/{id}/`
+7. Attachment paths included in debrief markdown for Claude
+
+**Key files:**
+- `recorder_controller.js` - file picker, preview, FormData upload
+- `debriefs_controller.rb` - handles `attachments[]` param
+- `notify_job.rb` - builds attachment URLs
+- `debrief-listener.rb` - downloads attachments before notifying Claude
 
 ## Environment
 
