@@ -1,7 +1,7 @@
 // Service Worker for Debrief PWA
 // Based on Fizzy's stable iOS implementation
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `debrief-${CACHE_VERSION}`;
 
 // Install event - take control immediately
