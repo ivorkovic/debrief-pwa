@@ -189,6 +189,34 @@ export default class extends Controller {
     this.updateUI()
   }
 
+  // Reset UI after successful send (no page navigation)
+  resetAfterSend() {
+    // Cleanup any lingering resources
+    this.cleanup()
+
+    // Reset audio state
+    this.audioChunks = []
+    this.audioBlob = null
+    this.timerTarget.textContent = "00:00"
+
+    // Reset text state
+    if (this.hasTextInputTarget) {
+      this.textInputTarget.value = ""
+    }
+    this.selectedFiles = []
+    if (this.hasFilePreviewTarget) {
+      this.filePreviewTarget.innerHTML = ""
+    }
+
+    // Return to appropriate idle state based on mode
+    if (this.mode === "text") {
+      this.state = "text_input"
+    } else {
+      this.state = "idle"
+    }
+    this.updateUI()
+  }
+
   // Mode switching for audio/text toggle
   selectMode(event) {
     const mode = event.currentTarget.dataset.mode
@@ -356,10 +384,10 @@ export default class extends Controller {
 
       clearTimeout(timeoutId)
 
-      if (response.redirected) {
-        window.location.href = response.url
-      } else if (response.ok) {
-        window.location.href = "/debriefs"
+      if (response.ok || response.redirected) {
+        // Success! Show toast and reset to idle state
+        window.showToast("success", "Sent!", 2500)
+        this.resetAfterSend()
       } else {
         throw new Error(`Server error: ${response.status}`)
       }
