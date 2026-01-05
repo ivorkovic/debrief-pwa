@@ -1,13 +1,13 @@
-<div class="min-h-screen bg-gray-900">
+<div class="h-full bg-gray-900 flex flex-col overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
   <!-- Header -->
-  <header class="flex items-center justify-between p-4 border-b border-gray-800">
-    <%= link_to new_debrief_path, class: "text-blue-400 hover:text-blue-300" do %>
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <header class="flex-shrink-0 flex items-center justify-between px-2 py-2 border-b border-gray-800">
+    <%= link_to new_debrief_path, class: "w-12 h-12 flex items-center justify-center rounded-xl text-blue-400 hover:text-blue-300 hover:bg-gray-800 active:bg-gray-700 transition-colors" do %>
+      <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
       </svg>
     <% end %>
-    <h1 class="text-white font-medium">History</h1>
-    <div class="w-6"></div>
+    <h1 class="text-white font-medium text-lg">History</h1>
+    <div class="w-12"></div>
   </header>
 
   <% if flash[:notice] %>
@@ -22,7 +22,7 @@
   <% end %>
 
   <!-- List -->
-  <div class="divide-y divide-gray-800">
+  <div class="flex-1 overflow-y-auto divide-y divide-gray-800">
     <% if @debriefs.empty? %>
       <div class="p-8 text-center text-gray-500">
         No debriefs yet
