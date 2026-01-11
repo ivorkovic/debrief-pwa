@@ -1,11 +1,11 @@
-<div class="min-h-screen bg-gray-900">
+<div class="h-full bg-gray-900 flex flex-col overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
   <!-- Auto-refresh while processing -->
   <% if @debrief.pending? || @debrief.transcribing? %>
     <meta http-equiv="refresh" content="3">
   <% end %>
 
   <!-- Header -->
-  <header class="flex items-center justify-between p-4 border-b border-gray-800">
+  <header class="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-800">
     <%= link_to debriefs_path, class: "text-blue-400 hover:text-blue-300" do %>
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -17,20 +17,22 @@
     <div class="w-6"></div>
   </header>
 
-  <% if flash[:notice] %>
-    <div class="bg-green-500/20 border-b border-green-500 text-green-300 px-4 py-3">
-      <%= flash[:notice] %>
-    </div>
-  <% end %>
+  <!-- Scrollable content area -->
+  <div class="flex-1 overflow-y-auto">
+    <% if flash[:notice] %>
+      <div class="bg-green-500/20 border-b border-green-500 text-green-300 px-4 py-3">
+        <%= flash[:notice] %>
+      </div>
+    <% end %>
 
-  <% if flash[:alert] %>
-    <div class="bg-red-500/20 border-b border-red-500 text-red-300 px-4 py-3">
-      <%= flash[:alert] %>
-    </div>
-  <% end %>
+    <% if flash[:alert] %>
+      <div class="bg-red-500/20 border-b border-red-500 text-red-300 px-4 py-3">
+        <%= flash[:alert] %>
+      </div>
+    <% end %>
 
-  <!-- Content -->
-  <div class="p-4 space-y-4">
+    <!-- Content -->
+    <div class="p-4 space-y-4">
     <!-- Status -->
     <div class="flex items-center gap-2">
       <% if @debrief.recorded_by.present? %>
@@ -132,5 +134,6 @@
         Delete
       <% end %>
     </div>
+  </div>
   </div>
 </div>
