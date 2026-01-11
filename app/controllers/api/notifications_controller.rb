@@ -33,6 +33,17 @@ module Api
       render json: { ok: true }
     end
 
+    # GET /api/debriefs/:id/status - check if debrief is completed
+    def status
+      debrief = Debrief.find(params[:id])
+      render json: {
+        id: debrief.id,
+        status: debrief.status,
+        completed: debrief.completed_at.present?,
+        completed_at: debrief.completed_at&.iso8601
+      }
+    end
+
     private
 
     def verify_local_request

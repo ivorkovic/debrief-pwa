@@ -17,6 +17,7 @@ Rails.application.routes.draw do
     get "unnotified", to: "notifications#index"
     post "notifications/:id/ack", to: "notifications#ack"
     post "debriefs/:id/complete", to: "notifications#complete"
+    get "debriefs/:id/status", to: "notifications#status"
   end
 
   # Push notifications

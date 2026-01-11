@@ -174,6 +174,35 @@ static UPLOAD_TIMEOUT = 60000 // 60 seconds
 static MAX_RETRIES = 3
 ```
 
+### Monitor false retry notifications
+
+**Problem:** `debrief-monitor.sh` sent RETRY/REMINDER messages even after debriefs were completed.
+
+**Root cause:** The `/api/debriefs/:id/status` endpoint didn't exist. Monitor's `check_completion` got 404s.
+
+**Fix:** Added status endpoint:
+- Route: `get "debriefs/:id/status", to: "notifications#status"` in `config/routes.rb`
+- Action: `status` in `app/controllers/api/notifications_controller.rb`
+
+**Test:** `ssh root@46.224.17.255 "curl -s http://localhost:3004/api/debriefs/ID/status"`
+
+### iOS microphone permission reset on navigation
+
+**Problem:** iOS asked for microphone permission repeatedly.
+
+**Root cause:** `window.location.href` redirect after upload caused full page reload, resetting iOS permission state (WebKit bug #215884).
+
+**Fix:** Stay on same page after send, show toast notification instead of redirect.
+- Added `app/javascript/controllers/toast_controller.js`
+- Modified `recorder_controller.js` to use `window.showToast()` + `resetAfterSend()`
+
+### PWA UI scroll and tap targets
+
+**Fixes applied:**
+1. No vertical scroll: body `fixed inset-0 overflow-hidden`, containers `h-full`
+2. Larger tap targets: 56x56px (w-14 h-14) with visible bg-gray-800
+3. Safe area insets: `padding-bottom: env(safe-area-inset-bottom)`
+
 ## Key Files
 
 | File | Purpose |
@@ -183,6 +212,8 @@ static MAX_RETRIES = 3
 | `app/views/pwa/service-worker.js` | Push notifications, caching |
 | `app/views/pwa/manifest.json.erb` | PWA manifest |
 | `app/javascript/controllers/recorder_controller.js` | Audio recording |
+| `app/javascript/controllers/toast_controller.js` | Toast notifications |
+| `app/controllers/api/notifications_controller.rb` | Internal API (status, complete, ack) |
 | `app/javascript/controllers/push_controller.js` | Push subscription UI |
 | `app/controllers/push_subscriptions_controller.rb` | VAPID endpoint |
 | `app/controllers/sessions_controller.rb` | Magic link auth flow |
