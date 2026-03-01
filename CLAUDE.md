@@ -201,7 +201,7 @@ static MAX_RETRIES = 3
 **Fixes applied:**
 1. No vertical scroll: body `fixed inset-0 overflow-hidden`, containers `h-full`
 2. Larger tap targets: 56x56px (w-14 h-14) with visible bg-gray-800
-3. Safe area insets: `padding-bottom: env(safe-area-inset-bottom)`
+3. Safe area insets: `padding-top: env(safe-area-inset-top)` and `padding-bottom: env(safe-area-inset-bottom)` on `<body>` in layout (applies to all views)
 
 ## Key Files
 
